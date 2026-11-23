@@ -60,6 +60,9 @@ dependencies {
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
     val fetchOrcaEngine by tasks.registering(Exec::class) {
         group = "build setup"
         description = "Fetches the checksum-verified OrcaSlicer ARM64 native engine"
@@ -75,5 +78,3 @@ dependencies {
         )
     }
     tasks.named("preBuild").configure { dependsOn(fetchOrcaEngine) }
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
-}
