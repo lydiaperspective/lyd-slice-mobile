@@ -128,13 +128,12 @@ for library in "${ARCHIVE_LIBRARIES[@]}"; do
         die "Orca $library checksum mismatch: expected $expected_sha, got $actual_sha"
 done
 
-# Refuse to overwrite unrelated native files. The old release integration put
-# only the four engine libraries and OCCT's libTK*.so family in this directory.
+# Refuse to overwrite unrelated native files. Only the pinned Orca engine libraries may be present in this directory.
 for path in "$OUTPUT_DIR"/*.so; do
     [[ -e "$path" || -L "$path" ]] || continue
     library="$(basename "$path")"
     case "$library" in
-        libslic3r.so|libgmp.so|libgmpxx.so|libmpfr.so|libTK*.so) ;;
+        libslic3r.so|libgmp.so|libgmpxx.so|libmpfr.so|libc++_shared.so|libTK*.so) ;;
         *) die "Refusing to replace unknown native library: $path" ;;
     esac
 done
