@@ -268,7 +268,7 @@ private fun SettingsScreen(
     var showProfileMenu by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
     var profileName by remember { mutableStateOf("") }
-    val warning = settingsWarning(settings)
+    val warning = settingsWarning(settings, printer)
 
     if (showSaveDialog) {
         AlertDialog(
@@ -447,18 +447,20 @@ private fun SettingsScreen(
     }
 }
 
-private fun settingsWarning(settings: PrintSettings): String? {
+private fun settingsWarning(settings: PrintSettings, printer: PrinterProfile): String? {
+    if (settings.material == "ABS" && !printer.heatedBed)
+        return "ABS commonly needs a heated build plate to reduce warping. The selected printer profile has no heated bed."
     if (settings.material == "PLA") {
         if (settings.nozzleTemperatureC !in 190..210)
             return "Robo's PLA guidance is 190–210°C. Outside this range, extrusion or stringing may worsen. Check your filament maker's label."
-        if (settings.bedTemperatureC !in 50..70)
+        if (printer.heatedBed && settings.bedTemperatureC !in 50..70)
             return "Robo's PLA bed guidance is 50–70°C. A large deviation can contribute to adhesion problems or deformation."
         if (settings.coolingFanPercent < 30)
             return "Low part cooling can reduce PLA detail and bridging quality. Reduce it only to troubleshoot a specific issue."
     } else {
         if (settings.nozzleTemperatureC !in 230..250)
             return "Robo's ABS guidance is 230–250°C. Confirm the filament's own range and your hot-end condition."
-        if (settings.bedTemperatureC !in 80..100)
+        if (printer.heatedBed && settings.bedTemperatureC !in 80..100)
             return "Robo's ABS bed guidance is 80–100°C. Too little bed heat can increase warping and poor adhesion."
         if (settings.coolingFanPercent > 20)
             return "Robo warns that ABS is prone to warping and recommends little or no part cooling. High fan speed may increase lifting."
