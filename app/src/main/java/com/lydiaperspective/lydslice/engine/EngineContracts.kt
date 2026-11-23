@@ -43,3 +43,16 @@ enum class ArrangementObjective {
     MINIMIZE_BUILD_PLATE_AREA,
     MINIMIZE_HEIGHT
 }
+
+
+/**
+ * Runtime hook for the platform-specific slicing engine.
+ *
+ * The app deliberately leaves this unset until a real slicer implementation is
+ * bundled. The UI must report that slicing is unavailable rather than creating
+ * placeholder or non-printable G-code.
+ */
+object SlicingEngineRegistry {
+    @Volatile
+    var engine: SlicingEngine? = null
+}
