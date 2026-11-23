@@ -17,7 +17,7 @@ These are cautious starting presets for experimentation, not official factory pr
 | PLA · Balanced | 0.20 mm | 40 mm/s | 205°C | 60°C | 100% | General-purpose starting point |
 | PLA · Fine detail | 0.12 mm | 30 mm/s | 200°C | 60°C | 100% | Slower, finer layers |
 | PLA · Faster draft | 0.27 mm | 50 mm/s | 205°C | 55°C | 100% | Less detail, shorter print |
-| ABS · Enclosed / low cooling | 0.20 mm | 35 mm/s | 240°C | 95°C | 0% | ABS where drafts and temperature are controlled |
+| ABS · Ventilated / low cooling | 0.20 mm | 35 mm/s | 240°C | 95°C | 0% | ABS where drafts and temperature are controlled |
 
 Robo's temperature guidance:
 - PLA: 190–210°C nozzle and 50–70°C bed.
