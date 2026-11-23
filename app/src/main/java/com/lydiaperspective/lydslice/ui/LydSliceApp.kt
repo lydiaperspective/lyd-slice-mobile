@@ -80,7 +80,8 @@ fun LydSliceApp() {
     val models = remember { mutableStateListOf<ModelPlacement>() }
     val localModelFiles = remember { mutableStateMapOf<String, File>() }
     val context = LocalContext.current
-    remember(context) { OrcaSlicerEngine(context.applicationContext).also { SlicingEngineRegistry.engine = it } }
+    val orcaEngine = remember(context) { OrcaSlicerEngine(context.applicationContext) }
+    SlicingEngineRegistry.engine = orcaEngine
     var settings by remember { mutableStateOf(PrintSettings()) }
     var slicing by remember { mutableStateOf(false) }
     var sliceProgress by remember { mutableStateOf(0f) }
@@ -136,7 +137,7 @@ fun LydSliceApp() {
                 } ?: error("Unable to read the selected STL file.")
                 require(localFile.length() >= 84L) { "The selected STL file is empty or incomplete." }
                 localModelFiles[id] = localFile
-                models.add(ModelPlacement(id = id, displayName = displayName, uri = uri.toString()))
+                models.add(ModelPlacement(id = id, displayName = displayName, uri = Uri.fromFile(localFile).toString()))
             }.onFailure { error ->
                 sliceError = "Could not import $displayName: ${error.message ?: "Unknown file error"}"
             }
@@ -445,6 +446,10 @@ private fun WorkspaceScreen(
                 }
             }
         }
+        if (models.size > 1) {
+            Text("The current Orca engine adapter slices one STL per job. Remove the extra models to continue.",
+                color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { /* Auto-arrange engine will be connected here. */ },
                 Modifier.weight(1f), enabled = !isSlicing) {
@@ -452,7 +457,7 @@ private fun WorkspaceScreen(
                 Text(" Auto arrange")
             }
             Button(onClick = onSlice, Modifier.weight(1f),
-                enabled = models.isNotEmpty() && !isSlicing) {
+                enabled = models.size == 1 && !isSlicing) {
                 if (isSlicing) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 else Text("Slice")
             }
