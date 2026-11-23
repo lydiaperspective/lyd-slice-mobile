@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-package tech.g24.feresaslicer.ui
+package com.lydiaperspective.lydslice.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
