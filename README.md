@@ -35,6 +35,12 @@ The settings screen includes built-in Robo R1 Plus starting profiles for PLA bal
 
 See [docs/PRINTER-PROFILE.md](docs/PRINTER-PROFILE.md) for the research notes, profile values, caveats and source links.
 
+## Printer profiles
+
+The Printer tab lets you select a built-in machine preset or create and save custom printer profiles. The initial presets include the Robo 3D R1 Plus and a generic FFF printer. Editing a built-in preset automatically creates a custom copy; it does not overwrite the original. Printer configuration includes build volume and plate geometry, heated-bed/chamber options, extruders and nozzle sizes, filament diameter, temperature ceilings, G-code flavor, printhead clearances, gantry height, and start/end G-code.
+
+See [docs/PRINTER-SETTINGS.md](docs/PRINTER-SETTINGS.md) for the Cura-inspired settings list, preset caveats, and current implementation boundaries.
+
 ## Slicing engine
 
 A real slicer is a major next milestone. The app will use a dedicated engine adapter so the Android UI does not depend on a particular slicer implementation. G-code must be validated against the R1 Plus firmware and printer profile before being treated as print-ready.
