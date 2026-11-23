@@ -2,6 +2,8 @@ package com.lydiaperspective.lydslice.engine
 
 import android.content.Context
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import com.lydiaperspective.lydslice.data.PrinterProfile
 import com.lydiaperspective.lydslice.data.PrintSettings
 import com.lydiaperspective.lydslice.data.ModelPlacement
@@ -35,10 +37,12 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
 
         val model = request.models.single()
         val input = copyModelIntoCache(model)
-        val outputDirectory = File(context.cacheDir, "slices").apply { mkdirs() }
+        val outputDirectory = File(context.filesDir, "slices").apply { mkdirs() }
         val output = File(outputDirectory, safeName(model.displayName) + ".gcode")
         val config = File(outputDirectory, "active-printer.ini")
+        if (output.exists()) require(output.delete()) { "Cannot replace the previous G-code file." }
         writeOrcaConfig(request.printer, request.settings, config)
+        onProgress(0f)
 
         Native.set_svg_path_prefix(outputDirectory.absolutePath + File.separator)
         Model(input.absolutePath).use { nativeModel ->
@@ -58,7 +62,8 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
                 config.absolutePath,
                 output.absolutePath,
                 SliceListener { percent, _ ->
-                    onProgress(percent.coerceIn(0, 100) / 100f)
+                    val progress = percent.coerceIn(0, 100) / 100f
+                    Handler(Looper.getMainLooper()).post { onProgress(progress) }
                 }
             )
             nativeResult.use { result ->
@@ -78,6 +83,7 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
                     }
                     add("Robo 3D R1 Plus dimensions and firmware settings in this profile still need verification against your physical printer.")
                 }
+                Handler(Looper.getMainLooper()).post { onProgress(1f) }
                 SliceResult(
                     gcodeFilePath = output.absolutePath,
                     estimatedPrintTimeSeconds = estimate,
@@ -89,7 +95,7 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
     }
 
     private fun copyModelIntoCache(model: ModelPlacement): File {
-        val directory = File(context.cacheDir, "slice-input").apply { mkdirs() }
+        val directory = File(context.filesDir, "slice-input").apply { mkdirs() }
         val destination = File(directory, safeName(model.displayName) + ".stl")
         val uri = Uri.parse(model.uri)
         val input = when (uri.scheme) {
@@ -97,7 +103,9 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
             "file" -> File(uri.path ?: error("Invalid model file URI")).inputStream()
             else -> null
         } ?: error("Cannot open ${model.displayName}. Please import the STL again.")
-        input.use { source -> destination.outputStream().use(source::copyTo) }
+        input.use { source ->
+            destination.outputStream().use { output -> source.copyTo(output) }
+        }
         require(destination.length() >= 84L) { "The selected STL file is empty or incomplete." }
         return destination
     }
