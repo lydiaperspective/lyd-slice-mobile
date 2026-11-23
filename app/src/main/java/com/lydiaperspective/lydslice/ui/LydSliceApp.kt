@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -132,7 +133,7 @@ fun LydSliceApp() {
                 onRemove = { models.remove(it) }, printer = activePrinter
             )
             AppTab.Settings -> SettingsScreen(
-                modifier = Modifier.padding(padding), settings = settings,
+                modifier = Modifier.padding(padding), settings = settings, printer = activePrinter,
                 onSettingsChange = { settings = it },
                 profiles = builtInProfiles + customProfiles,
                 onApplyProfile = { settings = it.settings },
@@ -257,6 +258,7 @@ private fun WorkspaceScreen(
 private fun SettingsScreen(
     modifier: Modifier = Modifier,
     settings: PrintSettings,
+    printer: PrinterProfile,
     onSettingsChange: (PrintSettings) -> Unit,
     profiles: List<PrintProfile>,
     onApplyProfile: (PrintProfile) -> Unit,
@@ -412,14 +414,16 @@ private fun SettingsScreen(
         }
         item {
             SettingSlider("Nozzle temperature", "${settings.nozzleTemperatureC} °C",
-                settings.nozzleTemperatureC.toFloat(), 170f, 290f) {
+                settings.nozzleTemperatureC.toFloat(), 170f, printer.maxNozzleTemperatureC.toFloat()) {
                 onSettingsChange(settings.copy(nozzleTemperatureC = it.roundToInt()))
             }
         }
-        item {
-            SettingSlider("Bed temperature", "${settings.bedTemperatureC} °C",
-                settings.bedTemperatureC.toFloat(), 0f, 100f) {
-                onSettingsChange(settings.copy(bedTemperatureC = it.roundToInt()))
+        if (printer.heatedBed) {
+            item {
+                SettingSlider("Bed temperature", "${settings.bedTemperatureC} °C",
+                    settings.bedTemperatureC.toFloat(), 0f, printer.maxBedTemperatureC.toFloat()) {
+                    onSettingsChange(settings.copy(bedTemperatureC = it.roundToInt()))
+                }
             }
         }
         item {
@@ -562,8 +566,8 @@ private fun PrinterScreen(
                 onProfileChange(profile.copy(extruderCount = it.toInt().coerceIn(1, 4)))
             }
             Text("Supported nozzle sizes (select all that apply)", style = MaterialTheme.typography.labelMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                nozzleChoices.forEach { size ->
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                items(nozzleChoices) { size ->
                     FilterChip(
                         selected = profile.nozzleDiametersMm.any { kotlin.math.abs(it - size) < 0.001f },
                         onClick = {
