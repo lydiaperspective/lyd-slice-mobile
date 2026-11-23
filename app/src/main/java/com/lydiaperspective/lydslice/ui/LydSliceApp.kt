@@ -12,7 +12,6 @@ import com.lydiaperspective.lydslice.engine.SliceRequest
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,6 +76,7 @@ private enum class AppTab(val label: String) {
 fun LydSliceApp() {
     var selectedTab by remember { mutableStateOf(AppTab.Workspace) }
     val models = remember { mutableStateListOf<ModelPlacement>() }
+    val context = LocalContext.current
     var settings by remember { mutableStateOf(PrintSettings()) }
     var slicing by remember { mutableStateOf(false) }
     var sliceProgress by remember { mutableStateOf(0f) }
@@ -103,7 +103,6 @@ fun LydSliceApp() {
             }
         }
     }
-    val context = LocalContext.current
     val customProfiles = remember {
         mutableStateListOf<PrintProfile>().apply { addAll(PrintProfileStore.loadCustom(context)) }
     }
@@ -227,7 +226,12 @@ fun LydSliceApp() {
             )
             AppTab.Settings -> SettingsScreen(
                 modifier = Modifier.padding(padding), settings = settings, printer = activePrinter,
-                onSettingsChange = { settings = it },
+                onSettingsChange = {
+                    settings = it
+                    completedGcodePath = null
+                    sliceWarnings = emptyList()
+                    sliceMessage = "Print settings changed. Slice again to update G-code."
+                },
                 profiles = builtInProfiles + customProfiles,
                 onApplyProfile = { settings = it.settings },
                 onSaveProfile = { name ->
@@ -247,6 +251,8 @@ fun LydSliceApp() {
                 profiles = builtInPrinterProfiles + customPrinterProfiles,
                 onSelectProfile = {
                     activePrinter = it
+                    completedGcodePath = null
+                    sliceMessage = "Printer changed. Slice again to update G-code."
                     PrinterProfileStore.saveSelectedId(context, it.id)
                 },
                 onProfileChange = { edited ->
@@ -375,11 +381,6 @@ private fun WorkspaceScreen(
                 enabled = models.isNotEmpty() && !isSlicing) {
                 if (isSlicing) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 else Text("Slice")
-            }
-        }
-        if (hasGcode && sliceWarnings.isEmpty()) {
-            OutlinedButton(onClick = onExport, modifier = Modifier.fillMaxWidth(), enabled = !isSlicing) {
-                Text("Export G-code")
             }
         }
         Text("Models", style = MaterialTheme.typography.titleMedium)
