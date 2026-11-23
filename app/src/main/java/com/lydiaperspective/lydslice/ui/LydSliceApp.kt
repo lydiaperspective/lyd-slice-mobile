@@ -52,6 +52,8 @@ import com.lydiaperspective.lydslice.data.ModelPlacement
 import com.lydiaperspective.lydslice.data.PrintProfile
 import com.lydiaperspective.lydslice.data.PrintProfileStore
 import com.lydiaperspective.lydslice.data.PrintSettings
+import com.lydiaperspective.lydslice.data.PrinterProfile
+import com.lydiaperspective.lydslice.data.PrinterProfileStore
 import java.util.UUID
 import kotlin.math.roundToInt
 
@@ -70,6 +72,15 @@ fun LydSliceApp() {
         mutableStateListOf<PrintProfile>().apply { addAll(PrintProfileStore.loadCustom(context)) }
     }
     val builtInProfiles = remember { PrintProfileStore.builtInProfiles() }
+    val builtInPrinterProfiles = remember { PrinterProfileStore.builtInProfiles() }
+    val customPrinterProfiles = remember {
+        mutableStateListOf<PrinterProfile>().apply { addAll(PrinterProfileStore.loadCustom(context)) }
+    }
+    var activePrinter by remember {
+        mutableStateOf((builtInPrinterProfiles + customPrinterProfiles).firstOrNull {
+            it.id == PrinterProfileStore.selectedId(context)
+        } ?: builtInPrinterProfiles.first())
+    }
 
     val stlPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
@@ -118,7 +129,7 @@ fun LydSliceApp() {
             AppTab.Workspace -> WorkspaceScreen(
                 modifier = Modifier.padding(padding), models = models,
                 onImport = { stlPicker.launch(arrayOf("model/stl", "application/sla", "application/octet-stream", "*/*")) },
-                onRemove = { models.remove(it) }
+                onRemove = { models.remove(it) }, printer = activePrinter
             )
             AppTab.Settings -> SettingsScreen(
                 modifier = Modifier.padding(padding), settings = settings,
@@ -136,7 +147,42 @@ fun LydSliceApp() {
                     PrintProfileStore.saveCustom(context, customProfiles.toList())
                 }
             )
-            AppTab.Printer -> PrinterScreen(Modifier.padding(padding))
+            AppTab.Printer -> PrinterScreen(
+                modifier = Modifier.padding(padding),
+                profile = activePrinter,
+                profiles = builtInPrinterProfiles + customPrinterProfiles,
+                onSelectProfile = {
+                    activePrinter = it
+                    PrinterProfileStore.saveSelectedId(context, it.id)
+                },
+                onProfileChange = { edited ->
+                    val updated = if (activePrinter.isBuiltIn) edited.copy(
+                        id = UUID.randomUUID().toString(),
+                        name = activePrinter.name + " (Custom)",
+                        isBuiltIn = false
+                    ) else edited.copy(isBuiltIn = false)
+                    activePrinter = updated
+                    val index = customPrinterProfiles.indexOfFirst { it.id == updated.id }
+                    if (index >= 0) customPrinterProfiles[index] = updated else customPrinterProfiles.add(updated)
+                    PrinterProfileStore.saveCustom(context, customPrinterProfiles.toList())
+                    PrinterProfileStore.saveSelectedId(context, updated.id)
+                },
+                onAddCustom = {
+                    val created = PrinterProfile(name = "My Custom Printer")
+                    customPrinterProfiles.add(created)
+                    activePrinter = created
+                    PrinterProfileStore.saveCustom(context, customPrinterProfiles.toList())
+                    PrinterProfileStore.saveSelectedId(context, created.id)
+                },
+                onDeleteCustom = {
+                    customPrinterProfiles.remove(it)
+                    PrinterProfileStore.saveCustom(context, customPrinterProfiles.toList())
+                    if (activePrinter.id == it.id) {
+                        activePrinter = builtInPrinterProfiles.first()
+                        PrinterProfileStore.saveSelectedId(context, activePrinter.id)
+                    }
+                }
+            )
         }
     }
 }
@@ -146,13 +192,14 @@ private fun WorkspaceScreen(
     modifier: Modifier = Modifier,
     models: List<ModelPlacement>,
     onImport: () -> Unit,
-    onRemove: (ModelPlacement) -> Unit
+    onRemove: (ModelPlacement) -> Unit,
+    printer: PrinterProfile
 ) {
     Column(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Build plate", style = MaterialTheme.typography.titleLarge)
-                Text("Robo 3D R1 Plus · provisional 220 × 220 mm",
+                Text(printer.name + " · " + printer.bedWidthMm.toInt() + " × " + printer.bedDepthMm.toInt() + " mm",
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Button(onClick = onImport) {
@@ -443,21 +490,162 @@ private fun SettingSlider(
 }
 
 @Composable
-private fun PrinterScreen(modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Printer connection", style = MaterialTheme.typography.headlineSmall)
-        Card {
-            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Robo 3D R1 Plus", style = MaterialTheme.typography.titleLarge)
-                Text("OctoPrint connection has not been configured.")
-                Text("Next: save the OctoPrint URL and API key securely, then add connection testing and G-code upload.")
-                OutlinedButton(onClick = { /* OctoPrint setup screen will be added next. */ }) {
-                    Icon(Icons.Default.Settings, contentDescription = null)
-                    Text(" Configure OctoPrint")
+private fun PrinterScreen(
+    modifier: Modifier = Modifier,
+    profile: PrinterProfile,
+    profiles: List<PrinterProfile>,
+    onSelectProfile: (PrinterProfile) -> Unit,
+    onProfileChange: (PrinterProfile) -> Unit,
+    onAddCustom: () -> Unit,
+    onDeleteCustom: (PrinterProfile) -> Unit
+) {
+    var printerMenu by remember { mutableStateOf(false) }
+    var shapeMenu by remember { mutableStateOf(false) }
+    var flavorMenu by remember { mutableStateOf(false) }
+    var nozzleMenu by remember { mutableStateOf(false) }
+    val nozzleChoices = listOf(0.2f, 0.25f, 0.3f, 0.4f, 0.5f, 0.6f, 0.8f, 1.0f)
+    LazyColumn(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item {
+            Text("Printer setup", style = MaterialTheme.typography.headlineSmall)
+            Text("Choose a preset or create a custom machine. Editing a built-in preset creates a separate custom copy.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Box {
+                OutlinedButton(onClick = { printerMenu = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(profile.name)
+                }
+                androidx.compose.material3.DropdownMenu(printerMenu, { printerMenu = false }) {
+                    profiles.forEach { preset ->
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text(preset.name + if (preset.isBuiltIn) " · Built-in" else " · Custom") },
+                            onClick = { onSelectProfile(preset); printerMenu = false }
+                        )
+                    }
                 }
             }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onAddCustom) { Icon(Icons.Default.Add, null); Text(" Add custom") }
+                if (!profile.isBuiltIn) OutlinedButton(onClick = { onDeleteCustom(profile) }) {
+                    Icon(Icons.Default.Delete, null); Text(" Delete")
+                }
+            }
+            Text(if (profile.isBuiltIn) "Built-in preset · edits are saved as a custom profile."
+                else "Custom profile · edits are saved automatically.",
+                color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
         }
-        Text("Printer profile", style = MaterialTheme.typography.titleMedium)
-        Text("Build volume, nozzle size, filament diameter, start G-code and end G-code will be editable in a later profile editor.")
+        item {
+            Text("Build volume", style = MaterialTheme.typography.titleLarge)
+            PrinterNumberField("X width (mm)", profile.bedWidthMm) { onProfileChange(profile.copy(bedWidthMm = it.coerceAtLeast(1f))) }
+            PrinterNumberField("Y depth (mm)", profile.bedDepthMm) { onProfileChange(profile.copy(bedDepthMm = it.coerceAtLeast(1f))) }
+            PrinterNumberField("Z height (mm)", profile.buildHeightMm) { onProfileChange(profile.copy(buildHeightMm = it.coerceAtLeast(1f))) }
+            Box {
+                OutlinedButton(onClick = { shapeMenu = true }) { Text("Build plate shape: " + profile.buildPlateShape) }
+                androidx.compose.material3.DropdownMenu(shapeMenu, { shapeMenu = false }) {
+                    listOf("Rectangular", "Circular", "Custom").forEach { shape ->
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text(shape) },
+                            onClick = { onProfileChange(profile.copy(buildPlateShape = shape)); shapeMenu = false }
+                        )
+                    }
+                }
+            }
+            ProfileSwitch("Origin at center (0,0)", profile.originAtCenter) { onProfileChange(profile.copy(originAtCenter = it)) }
+            ProfileSwitch("Heated bed", profile.heatedBed) { onProfileChange(profile.copy(heatedBed = it)) }
+            ProfileSwitch("Heated build volume / chamber", profile.heatedBuildVolume) { onProfileChange(profile.copy(heatedBuildVolume = it)) }
+            if (!profile.heatedBed) Text("This printer has no heated bed. Bed temperature must not be used by generated machine code.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            if (profile.id == "robo3d-r1-plus") Text("R1 Plus build volume is a provisional 220 × 220 × 250 mm. Verify actual usable travel before slicing.",
+                color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
+        item {
+            Text("Extruders and nozzle", style = MaterialTheme.typography.titleLarge)
+            PrinterNumberField("Number of extruders", profile.extruderCount.toFloat()) {
+                onProfileChange(profile.copy(extruderCount = it.toInt().coerceIn(1, 4)))
+            }
+            Text("Supported nozzle sizes (select all that apply)", style = MaterialTheme.typography.labelMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                nozzleChoices.forEach { size ->
+                    FilterChip(
+                        selected = profile.nozzleDiametersMm.any { kotlin.math.abs(it - size) < 0.001f },
+                        onClick = {
+                            val values = profile.nozzleDiametersMm.toMutableList()
+                            val index = values.indexOfFirst { kotlin.math.abs(it - size) < 0.001f }
+                            if (index >= 0 && values.size > 1) values.removeAt(index) else if (index < 0) values.add(size)
+                            val sorted = values.sorted()
+                            val active = if (sorted.contains(profile.activeNozzleDiameterMm)) profile.activeNozzleDiameterMm else sorted.first()
+                            onProfileChange(profile.copy(nozzleDiametersMm = sorted, activeNozzleDiameterMm = active))
+                        }, label = { Text(size.toString()) }
+                    )
+                }
+            }
+            Box {
+                OutlinedButton(onClick = { nozzleMenu = true }) {
+                    Text("Installed nozzle: " + profile.activeNozzleDiameterMm + " mm")
+                }
+                androidx.compose.material3.DropdownMenu(nozzleMenu, { nozzleMenu = false }) {
+                    profile.nozzleDiametersMm.forEach { size ->
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text(size.toString() + " mm") },
+                            onClick = { onProfileChange(profile.copy(activeNozzleDiameterMm = size)); nozzleMenu = false }
+                        )
+                    }
+                }
+            }
+            PrinterNumberField("Filament diameter (mm)", profile.filamentDiameterMm) {
+                onProfileChange(profile.copy(filamentDiameterMm = it.coerceAtLeast(0.1f)))
+            }
+            PrinterNumberField("Maximum nozzle temperature (°C)", profile.maxNozzleTemperatureC.toFloat()) {
+                onProfileChange(profile.copy(maxNozzleTemperatureC = it.toInt().coerceIn(0, 500)))
+            }
+            PrinterNumberField("Maximum bed temperature (°C)", profile.maxBedTemperatureC.toFloat()) {
+                onProfileChange(profile.copy(maxBedTemperatureC = it.toInt().coerceIn(0, 200)))
+            }
+        }
+        item {
+            Text("Machine settings", style = MaterialTheme.typography.titleLarge)
+            Box {
+                OutlinedButton(onClick = { flavorMenu = true }) { Text("G-code flavor: " + profile.gcodeFlavor) }
+                androidx.compose.material3.DropdownMenu(flavorMenu, { flavorMenu = false }) {
+                    listOf("Marlin", "RepRap", "Klipper", "UltiGCode", "Griffin", "Makerbot", "Other").forEach { flavor ->
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text(flavor) },
+                            onClick = { onProfileChange(profile.copy(gcodeFlavor = flavor)); flavorMenu = false }
+                        )
+                    }
+                }
+            }
+            Text("Printhead clearance (mm)", style = MaterialTheme.typography.titleMedium)
+            PrinterNumberField("X min", profile.headXMinMm) { onProfileChange(profile.copy(headXMinMm = it)) }
+            PrinterNumberField("Y min", profile.headYMinMm) { onProfileChange(profile.copy(headYMinMm = it)) }
+            PrinterNumberField("X max", profile.headXMaxMm) { onProfileChange(profile.copy(headXMaxMm = it)) }
+            PrinterNumberField("Y max", profile.headYMaxMm) { onProfileChange(profile.copy(headYMaxMm = it)) }
+            PrinterNumberField("Gantry height (mm)", profile.gantryHeightMm) { onProfileChange(profile.copy(gantryHeightMm = it)) }
+        }
+        item {
+            Text("Start and end G-code", style = MaterialTheme.typography.titleLarge)
+            Text("Saved with this profile. Not yet used to generate G-code; machine scripts must be validated against firmware before use.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedTextField(profile.startGcode, { onProfileChange(profile.copy(startGcode = it)) },
+                modifier = Modifier.fillMaxWidth(), label = { Text("Machine start G-code") }, minLines = 4)
+            OutlinedTextField(profile.endGcode, { onProfileChange(profile.copy(endGcode = it)) },
+                modifier = Modifier.fillMaxWidth(), label = { Text("Machine end G-code") }, minLines = 4)
+        }
+    }
+}
+
+@Composable
+private fun PrinterNumberField(label: String, value: Float, onValueChange: (Float) -> Unit) {
+    var text by remember(value) { mutableStateOf(value.toString()) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { next -> text = next; next.toFloatOrNull()?.let(onValueChange) },
+        modifier = Modifier.fillMaxWidth(), label = { Text(label) }, singleLine = true
+    )
+}
+
+@Composable
+private fun ProfileSwitch(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, modifier = Modifier.weight(1f))
+        androidx.compose.material3.Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
