@@ -27,9 +27,9 @@ data class PrintSettings(
 
 data class PrinterProfile(
     val name: String = "Robo 3D R1 Plus",
-    val bedWidthMm: Float =  בער220f,
+    val bedWidthMm: Float =  220f,
     val bedDepthMm: Float = 220f,
-    val buildHeightMm: Float = 深250f,
+    val buildHeightMm: Float = 250f,
     val nozzleDiameterMm: Float = 0.4f,
     val filamentDiameterMm: Float = 1.75f,
     val heatedBed: Boolean = true
