@@ -1,5 +1,7 @@
 package com.lydiaperspective.lydslice.data
 
+import java.util.UUID
+
 data class ModelPlacement(
     val id: String,
     val displayName: String,
@@ -35,13 +37,33 @@ data class PrintProfile(
     val isBuiltIn: Boolean = false
 )
 
+/**
+ * Machine-level configuration inspired by Cura's Printer / Extruder settings.
+ * Build volume for the R1 Plus is provisional and must be verified on the actual machine.
+ */
 data class PrinterProfile(
-    val name: String = "Robo 3D R1 Plus",
-    // These dimensions remain provisional until verified against the user's machine.
-    val bedWidthMm: Float = 220f,
-    val bedDepthMm: Float = 220f,
-    val buildHeightMm: Float = 250f,
-    val nozzleDiameterMm: Float = 0.4f,
+    val id: String = UUID.randomUUID().toString(),
+    val name: String = "Custom FFF Printer",
+    val bedWidthMm: Float = 200f,
+    val bedDepthMm: Float = 200f,
+    val buildHeightMm: Float = 200f,
+    val buildPlateShape: String = "Rectangular",
+    val originAtCenter: Boolean = false,
+    val heatedBed: Boolean = false,
+    val heatedBuildVolume: Boolean = false,
+    val nozzleDiametersMm: List<Float> = listOf(0.4f),
+    val activeNozzleDiameterMm: Float = 0.4f,
     val filamentDiameterMm: Float = 1.75f,
-    val heatedBed: Boolean = true
+    val extruderCount: Int = 1,
+    val gcodeFlavor: String = "Marlin",
+    val headXMinMm: Float = 0f,
+    val headYMinMm: Float = 0f,
+    val headXMaxMm: Float = 0f,
+    val headYMaxMm: Float = 0f,
+    val gantryHeightMm: Float = 0f,
+    val maxNozzleTemperatureC: Int = 290,
+    val maxBedTemperatureC: Int = 100,
+    val startGcode: String = "",
+    val endGcode: String = "",
+    val isBuiltIn: Boolean = false
 )
