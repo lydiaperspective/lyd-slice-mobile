@@ -159,7 +159,7 @@ fun LydSliceApp() {
                 onProfileChange = { edited ->
                     val updated = if (activePrinter.isBuiltIn) edited.copy(
                         id = UUID.randomUUID().toString(),
-                        name = activePrinter.name + " (Custom)",
+                        name = if (edited.name != activePrinter.name) edited.name else activePrinter.name + " (Custom)",
                         isBuiltIn = false
                     ) else edited.copy(isBuiltIn = false)
                     activePrinter = updated
@@ -535,6 +535,13 @@ private fun PrinterScreen(
             Text(if (profile.isBuiltIn) "Built-in preset · edits are saved as a custom profile."
                 else "Custom profile · edits are saved automatically.",
                 color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(
+                value = profile.name,
+                onValueChange = { onProfileChange(profile.copy(name = it)) },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Printer profile name") },
+                singleLine = true
+            )
         }
         item {
             Text("Build volume", style = MaterialTheme.typography.titleLarge)
