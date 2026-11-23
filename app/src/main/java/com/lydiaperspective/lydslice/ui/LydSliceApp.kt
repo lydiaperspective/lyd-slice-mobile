@@ -19,9 +19,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Bed
-import androidx.compose.material.icons.filled.Cable
-import androidx.compose.material.icons.filled.CropRotate
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ViewInAr
@@ -106,7 +103,7 @@ fun LydSliceApp() {
                                 imageVector = when (tab) {
                                     AppTab.Workspace -> Icons.Default.ViewInAr
                                     AppTab.Settings -> Icons.Default.Settings
-                                    AppTab.Printer -> Icons.Default.Cable
+                                    AppTab.Printer -> Icons.Default.Settings
                                 },
                                 contentDescription = tab.label
                             )
@@ -180,7 +177,7 @@ private fun WorkspaceScreen(
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { /* Auto-arrange engine will be connected here. */ }, modifier = Modifier.weight(1f)) {
-                Icon(Icons.Default.CropRotate, contentDescription = null)
+                Icon(Icons.Default.Settings, contentDescription = null)
                 Text(" Auto arrange")
             }
             Button(onClick = { /* Slicing engine will be connected here. */ }, modifier = Modifier.weight(1f), enabled = models.isNotEmpty()) {
