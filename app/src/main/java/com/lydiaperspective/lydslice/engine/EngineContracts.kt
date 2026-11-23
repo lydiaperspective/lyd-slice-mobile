@@ -48,9 +48,8 @@ enum class ArrangementObjective {
 /**
  * Runtime hook for the platform-specific slicing engine.
  *
- * The app deliberately leaves this unset until a real slicer implementation is
- * bundled. The UI must report that slicing is unavailable rather than creating
- * placeholder or non-printable G-code.
+ * LydSliceApp registers the bundled OrcaSlicer adapter at startup. A null value
+ * still means no engine is available; the UI must never fabricate G-code.
  */
 object SlicingEngineRegistry {
     @Volatile
