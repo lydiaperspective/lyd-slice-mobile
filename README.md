@@ -4,7 +4,7 @@ Native Android 3D-print preparation app for importing STL models, arranging a bu
 
 ## Current status
 
-This repository contains the initial Android application foundation. The current workspace is a UI and architecture scaffold; it does **not** yet generate production G-code or communicate with a printer.
+The app now integrates an ARM64 OrcaSlicer-derived native engine for local STL slicing, with an interactive 3D model view and G-code toolpath preview. This is an early integration: the current adapter slices one STL per job, and Robo 3D R1 Plus machine limits and start/end G-code still require verification before printing.
 
 ## Target hardware
 
@@ -41,9 +41,19 @@ The Printer tab lets you select a built-in machine preset or create and save cus
 
 See [docs/PRINTER-SETTINGS.md](docs/PRINTER-SETTINGS.md) for the Cura-inspired settings list, preset caveats, and current implementation boundaries.
 
-## Slicing engine
+## Slicing engine and preview
 
-A real slicer is a major next milestone. The app will use a dedicated engine adapter so the Android UI does not depend on a particular slicer implementation. G-code must be validated against the R1 Plus firmware and printer profile before being treated as print-ready.
+- The app uses the pinned OrcaSlicer Mobile `libslic3r` ARM64 native engine through its JNI ABI.
+- Android builds fetch a checksum-verified engine archive from the Feresa Slicer project during `preBuild`; the native binaries are not committed to this repository.
+- The Workspace includes an interactive 3D STL preview and switches to a layer/toolpath preview after slicing.
+- The current adapter accepts one STL per slice. Multi-model plate composition and transforms are not yet connected to the native request.
+- The native engine currently targets `arm64-v8a` and Android API 28+.
+- G-code output is local and can be exported through Android's Save File picker.
+- The adapter emits warnings when printer start/end G-code is missing and while the R1 Plus profile remains unverified.
+
+The OrcaSlicer-derived integration is distributed under AGPL-3.0. See `LICENSE`, `licenses/feresa/NOTICE.md`, and `licenses/feresa/THIRD_PARTY_NOTICES.md`. The app must preserve the corresponding source and license obligations when redistributed.
+
+Generated G-code must be inspected in the preview and checked against the physical R1 Plus firmware, dimensions, temperatures, motion limits, and start/end G-code before printing.
 
 ## Safety
 
