@@ -374,6 +374,7 @@ private fun WorkspaceScreen(
     onSlice: () -> Unit,
     onExport: () -> Unit
 ) {
+    var previewProgress by remember(gcodePreviewFile) { mutableStateOf(1f) }
     Column(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -401,6 +402,7 @@ private fun WorkspaceScreen(
                     bedWidth = printer.bedWidthMm.toDouble(),
                     bedDepth = printer.bedDepthMm.toDouble(),
                     mode = if (gcodePreviewFile != null) ViewerMode.TOOLPATH else ViewerMode.MODEL,
+                    toolpathProgress = previewProgress,
                     darkTheme = true,
                     onSceneState = {},
                     onError = { message -> /* Viewer errors do not invalidate the model or G-code. */ },
@@ -418,6 +420,11 @@ private fun WorkspaceScreen(
                     }
                 }
             }
+        }
+        if (gcodePreviewFile != null) {
+            Text("Toolpath preview · ${(previewProgress * 100).roundToInt()}%",
+                style = MaterialTheme.typography.labelMedium)
+            Slider(value = previewProgress, onValueChange = { previewProgress = it })
         }
         if (isSlicing || sliceMessage != "Ready to slice" || sliceError != null || sliceWarnings.isNotEmpty()) {
             Card(Modifier.fillMaxWidth()) {
