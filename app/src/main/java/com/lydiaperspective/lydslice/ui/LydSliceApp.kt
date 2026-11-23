@@ -1,6 +1,7 @@
 package com.lydiaperspective.lydslice.ui
 
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -89,7 +90,7 @@ fun LydSliceApp() {
         uris.forEach { uri ->
             models.add(ModelPlacement(
                 id = UUID.randomUUID().toString(),
-                displayName = uri.lastPathSegment?.substringAfterLast('/') ?: "STL model",
+                displayName = getDisplayFileName(context, uri),
                 uri = uri.toString()
             ))
         }
@@ -186,6 +187,23 @@ fun LydSliceApp() {
             )
         }
     }
+}
+
+
+private fun getDisplayFileName(context: android.content.Context, uri: Uri): String {
+    val queriedName = runCatching {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex >= 0) cursor.getString(nameIndex) else null
+                } else null
+            }
+    }.getOrNull()
+
+    return queriedName?.takeIf { it.isNotBlank() }
+        ?: uri.lastPathSegment?.substringAfterLast('/')?.substringAfterLast(':')?.takeIf { it.isNotBlank() }
+        ?: "STL model"
 }
 
 @Composable
