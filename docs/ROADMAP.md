@@ -7,6 +7,7 @@
 - [x] Initial print-setting state model and controls
 - [x] Robo 3D R1 Plus profile data type
 - [ ] Build and run verification in Android Studio
+- [x] Add an engine-facing slicing progress and G-code export workflow (requires a real engine implementation)
 
 ## Phase 1 — Model workspace
 - Parse binary and ASCII STL files and calculate mesh bounds
@@ -25,8 +26,10 @@
 ## Phase 3 — Slicing engine
 - Evaluate a mature engine suitable for Android packaging (native library/JNI or an isolated engine process)
 - Define an engine adapter and typed slice request/result
+- [ ] Integrate and package a real slicing engine; the current runtime engine registry is intentionally unset
 - Generate G-code from validated mesh and printer settings
-- Add progress reporting, cancellation, time/material estimates and preview
+- [x] Add the UI workflow for progress reporting, completion/failure feedback, engine warnings, time/material estimates, and G-code export
+- Add cancellation and an actual layer-by-layer toolpath preview
 - Test generated output against known-good R1 Plus profiles before printing
 
 ## Phase 4 — OctoPrint
