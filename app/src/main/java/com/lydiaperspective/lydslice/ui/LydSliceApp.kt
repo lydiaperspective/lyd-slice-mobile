@@ -81,6 +81,7 @@ fun LydSliceApp() {
     var slicing by remember { mutableStateOf(false) }
     var sliceProgress by remember { mutableStateOf(0f) }
     var sliceMessage by remember { mutableStateOf("Ready to slice") }
+    var sliceDetails by remember { mutableStateOf("") }
     var sliceError by remember { mutableStateOf<String?>(null) }
     var sliceWarnings by remember { mutableStateOf<List<String>>(emptyList()) }
     var completedGcodePath by remember { mutableStateOf<String?>(null) }
@@ -126,6 +127,12 @@ fun LydSliceApp() {
                 displayName = getDisplayFileName(context, uri),
                 uri = uri.toString()
             ))
+        }
+        if (uris.isNotEmpty()) {
+            completedGcodePath = null
+            sliceWarnings = emptyList()
+            sliceDetails = ""
+            sliceMessage = "Models added. Slice to generate updated G-code."
         }
     }
 
@@ -207,6 +214,16 @@ fun LydSliceApp() {
                                 }
                                 completedGcodePath = output.absolutePath
                                 sliceWarnings = result.warnings
+                                sliceDetails = buildList {
+                                    result.estimatedPrintTimeSeconds?.let { seconds ->
+                                        val hours = seconds / 3600
+                                        val minutes = (seconds % 3600) / 60
+                                        add("Estimated print time: " + if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m")
+                                    }
+                                    result.filamentUsedMm?.let { millimeters ->
+                                        add("Estimated filament: ${"%.1f".format(millimeters / 1000f)} m")
+                                    }
+                                }.joinToString(" · ")
                                 sliceProgress = 1f
                                 sliceMessage = "Slicing complete"
                                 pendingGcodeName = models.firstOrNull()?.displayName
@@ -230,10 +247,16 @@ fun LydSliceApp() {
                     settings = it
                     completedGcodePath = null
                     sliceWarnings = emptyList()
+                    sliceDetails = ""
                     sliceMessage = "Print settings changed. Slice again to update G-code."
                 },
                 profiles = builtInProfiles + customProfiles,
-                onApplyProfile = { settings = it.settings },
+                onApplyProfile = {
+                    settings = it.settings
+                    completedGcodePath = null
+                    sliceDetails = ""
+                    sliceMessage = "Print profile changed. Slice again to update G-code."
+                },
                 onSaveProfile = { name ->
                     val index = customProfiles.indexOfFirst { it.name.equals(name, ignoreCase = true) }
                     val profile = PrintProfile(name.trim(), settings)
@@ -252,6 +275,7 @@ fun LydSliceApp() {
                 onSelectProfile = {
                     activePrinter = it
                     completedGcodePath = null
+                    sliceDetails = ""
                     sliceMessage = "Printer changed. Slice again to update G-code."
                     PrinterProfileStore.saveSelectedId(context, it.id)
                 },
@@ -262,6 +286,9 @@ fun LydSliceApp() {
                         isBuiltIn = false
                     ) else edited.copy(isBuiltIn = false)
                     activePrinter = updated
+                    completedGcodePath = null
+                    sliceDetails = ""
+                    sliceMessage = "Printer configuration changed. Slice again to update G-code."
                     val index = customPrinterProfiles.indexOfFirst { it.id == updated.id }
                     if (index >= 0) customPrinterProfiles[index] = updated else customPrinterProfiles.add(updated)
                     PrinterProfileStore.saveCustom(context, customPrinterProfiles.toList())
@@ -360,6 +387,10 @@ private fun WorkspaceScreen(
                         progress = { sliceProgress }, modifier = Modifier.fillMaxWidth()
                     )
                     sliceError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    if (sliceDetails.isNotBlank()) {
+                        Text(sliceDetails, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
                     sliceWarnings.forEach { warning ->
                         Text("Warning: $warning", color = MaterialTheme.colorScheme.error)
                     }
