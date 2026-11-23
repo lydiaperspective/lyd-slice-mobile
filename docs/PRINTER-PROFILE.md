@@ -26,6 +26,12 @@ Robo's temperature guidance:
 
 Robo's troubleshooting guidance recommends lowering the fan to around 30% if parts curl, using no part cooling for ABS, and slowing/thickening the first layer when bed adhesion is poor. These are troubleshooting suggestions, not universal requirements.
 
+## Owner-reported experience and caveats
+
+A long-term R1+ owner-maintainer's project notes that their machine had been modified over several years. They report that dual part-cooling fans improved PLA appearance and that careful X-axis gantry balance/mesh leveling had a noticeable effect on first-layer quality. The same owner reports personally preferring MatterSlicer results to Cura on their setup. This is useful context, but it is one modified machine and does not establish a universal speed/temperature recipe.
+
+Robo's own support material also contains differing Z-offset guidance across pages: one operation guide describes a typical R1+ offset around 0.9 mm, while a separate Z-endstop support article says to leave the R1 Plus at 0 mm in a particular Cura/start-G-code workflow. Because the instructions are context-dependent and potentially firmware/slicer-specific, the app must not hard-code a Z-offset or start G-code. The actual printer's firmware, slicer profile and first-layer calibration need to be checked.
+
 ## In-app warning rules
 
 The app warns when PLA or ABS temperatures fall outside Robo's published material guidance, ABS part cooling is high, PLA cooling is unusually low, layer height exceeds 0.30 mm, print speed exceeds the app's conservative 60 mm/s starting range, initial-layer speed is high, or the quality/speed control is pushed strongly toward speed.
