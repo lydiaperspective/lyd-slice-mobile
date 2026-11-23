@@ -10,9 +10,11 @@
 - [x] Add an engine-facing slicing progress and G-code export workflow (requires a real engine implementation)
 
 ## Phase 1 — Model workspace
+- [x] Add interactive 3D STL model preview
 - Parse binary and ASCII STL files and calculate mesh bounds
 - Persist imported files in app-managed storage
-- Add a real 3D viewport with orbit, pan, zoom, selection and touch gizmos
+- [x] Add an interactive 3D viewport with orbit, pan and zoom
+- Add model selection and touch gizmos
 - Support per-model translation and rotation
 - Validate model placement against the build volume
 - Implement collision-aware auto-arrangement with a selectable objective
@@ -24,13 +26,14 @@
 - Persist projects and settings
 
 ## Phase 3 — Slicing engine
-- Evaluate a mature engine suitable for Android packaging (native library/JNI or an isolated engine process)
-- Define an engine adapter and typed slice request/result
-- [ ] Integrate and package a real slicing engine; the current runtime engine registry is intentionally unset
-- Generate G-code from validated mesh and printer settings
+- [x] Evaluate and select an Android-packaged OrcaSlicer-derived native engine
+- [x] Define an engine adapter and typed slice request/result
+- [x] Integrate the checksum-pinned ARM64 native engine and JNI ABI
+- [x] Generate G-code from a single STL and the current printer/print settings
+- [x] Add an interactive G-code toolpath preview
 - [x] Add the UI workflow for progress reporting, completion/failure feedback, engine warnings, time/material estimates, and G-code export
-- Add cancellation and an actual layer-by-layer toolpath preview
-- Test generated output against known-good R1 Plus profiles before printing
+- Add cancellation and multi-model plate composition/arrangement
+- [ ] Verify the R1 Plus profile, start/end G-code and generated output against known-good test prints before printing
 
 ## Phase 4 — OctoPrint
 - Configure server URL and API key
