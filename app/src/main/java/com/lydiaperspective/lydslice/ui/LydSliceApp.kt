@@ -190,6 +190,8 @@ fun LydSliceApp() {
                     if (engine == null) {
                         sliceError = "No slicing engine is connected yet. STL files cannot be converted to printable G-code in this app build."
                         sliceMessage = "Slicing unavailable"
+                        sliceDetails = ""
+                        sliceWarnings = emptyList()
                         completedGcodePath = null
                     } else if (models.isEmpty()) {
                         sliceError = "Import at least one STL model before slicing."
@@ -199,6 +201,7 @@ fun LydSliceApp() {
                             sliceProgress = 0f
                             sliceError = null
                             sliceWarnings = emptyList()
+                            sliceDetails = ""
                             completedGcodePath = null
                             sliceMessage = "Preparing models…"
                             try {
@@ -296,6 +299,9 @@ fun LydSliceApp() {
                 },
                 onAddCustom = {
                     val created = PrinterProfile(name = "My Custom Printer")
+                    completedGcodePath = null
+                    sliceDetails = ""
+                    sliceMessage = "Printer changed. Slice again to update G-code."
                     customPrinterProfiles.add(created)
                     activePrinter = created
                     PrinterProfileStore.saveCustom(context, customPrinterProfiles.toList())
