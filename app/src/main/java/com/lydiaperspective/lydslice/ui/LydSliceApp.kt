@@ -4,6 +4,15 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import java.io.FileInputStream
+import java.io.File
+import kotlinx.coroutines.launch
+import com.lydiaperspective.lydslice.engine.SlicingEngineRegistry
+import com.lydiaperspective.lydslice.engine.SliceRequest
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,6 +78,31 @@ fun LydSliceApp() {
     var selectedTab by remember { mutableStateOf(AppTab.Workspace) }
     val models = remember { mutableStateListOf<ModelPlacement>() }
     var settings by remember { mutableStateOf(PrintSettings()) }
+    var slicing by remember { mutableStateOf(false) }
+    var sliceProgress by remember { mutableStateOf(0f) }
+    var sliceMessage by remember { mutableStateOf("Ready to slice") }
+    var sliceError by remember { mutableStateOf<String?>(null) }
+    var sliceWarnings by remember { mutableStateOf<List<String>>(emptyList()) }
+    var completedGcodePath by remember { mutableStateOf<String?>(null) }
+    var pendingGcodeName by remember { mutableStateOf("print.gcode") }
+    val scope = rememberCoroutineScope()
+    val gcodeExporter = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/x-gcode")
+    ) { destination ->
+        val sourcePath = completedGcodePath
+        if (destination != null && sourcePath != null) {
+            runCatching {
+                context.contentResolver.openOutputStream(destination)?.use { output ->
+                    FileInputStream(File(sourcePath)).use { input -> input.copyTo(output) }
+                } ?: error("Android could not open the selected export destination.")
+            }.onSuccess {
+                sliceMessage = "G-code exported successfully."
+                sliceError = null
+            }.onFailure {
+                sliceError = "Export failed: ${it.message ?: "Unable to write the G-code file."}"
+            }
+        }
+    }
     val context = LocalContext.current
     val customProfiles = remember {
         mutableStateListOf<PrintProfile>().apply { addAll(PrintProfileStore.loadCustom(context)) }
@@ -131,7 +165,65 @@ fun LydSliceApp() {
             AppTab.Workspace -> WorkspaceScreen(
                 modifier = Modifier.padding(padding), models = models,
                 onImport = { stlPicker.launch(arrayOf("model/stl", "application/sla", "application/octet-stream", "*/*")) },
-                onRemove = { models.remove(it) }, printer = activePrinter
+                onRemove = {
+                    models.remove(it)
+                    completedGcodePath = null
+                    sliceWarnings = emptyList()
+                    sliceError = null
+                    sliceMessage = "Model list changed. Slice again to update G-code."
+                },
+                printer = activePrinter,
+                isSlicing = slicing,
+                sliceProgress = sliceProgress,
+                sliceMessage = sliceMessage,
+                sliceError = sliceError,
+                sliceWarnings = sliceWarnings,
+                hasGcode = completedGcodePath != null,
+                onSlice = {
+                    val engine = SlicingEngineRegistry.engine
+                    if (engine == null) {
+                        sliceError = "No slicing engine is connected yet. STL files cannot be converted to printable G-code in this app build."
+                        sliceMessage = "Slicing unavailable"
+                        completedGcodePath = null
+                    } else if (models.isEmpty()) {
+                        sliceError = "Import at least one STL model before slicing."
+                    } else {
+                        scope.launch {
+                            slicing = true
+                            sliceProgress = 0f
+                            sliceError = null
+                            sliceWarnings = emptyList()
+                            completedGcodePath = null
+                            sliceMessage = "Preparing models…"
+                            try {
+                                val result = engine.slice(
+                                    SliceRequest(models.toList(), activePrinter, settings)
+                                ) { progress ->
+                                    sliceProgress = progress.coerceIn(0f, 1f)
+                                    sliceMessage = "Slicing model…"
+                                }
+                                val output = File(result.gcodeFilePath)
+                                require(output.isFile && output.length() > 0L) {
+                                    "The slicing engine did not produce a non-empty G-code file."
+                                }
+                                completedGcodePath = output.absolutePath
+                                sliceWarnings = result.warnings
+                                sliceProgress = 1f
+                                sliceMessage = "Slicing complete"
+                                pendingGcodeName = models.firstOrNull()?.displayName
+                                    ?.substringBeforeLast('.', models.first().displayName)
+                                    ?.replace(Regex("[^A-Za-z0-9._-]"), "_")
+                                    ?.plus(".gcode") ?: "print.gcode"
+                            } catch (error: Exception) {
+                                sliceError = error.message ?: "An unexpected slicing error occurred."
+                                sliceMessage = "Slicing failed"
+                            } finally {
+                                slicing = false
+                            }
+                        }
+                    }
+                },
+                onExport = { gcodeExporter.launch(pendingGcodeName) }
             )
             AppTab.Settings -> SettingsScreen(
                 modifier = Modifier.padding(padding), settings = settings, printer = activePrinter,
@@ -212,7 +304,15 @@ private fun WorkspaceScreen(
     models: List<ModelPlacement>,
     onImport: () -> Unit,
     onRemove: (ModelPlacement) -> Unit,
-    printer: PrinterProfile
+    printer: PrinterProfile,
+    isSlicing: Boolean,
+    sliceProgress: Float,
+    sliceMessage: String,
+    sliceError: String?,
+    sliceWarnings: List<String>,
+    hasGcode: Boolean,
+    onSlice: () -> Unit,
+    onExport: () -> Unit
 ) {
     Column(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -242,13 +342,45 @@ private fun WorkspaceScreen(
                 }
             }
         }
+        if (isSlicing || sliceMessage != "Ready to slice" || sliceError != null || sliceWarnings.isNotEmpty()) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isSlicing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Text(sliceMessage, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                        if (isSlicing) Text("${(sliceProgress * 100).roundToInt()}%")
+                    }
+                    if (isSlicing) LinearProgressIndicator(
+                        progress = { sliceProgress }, modifier = Modifier.fillMaxWidth()
+                    )
+                    sliceError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    sliceWarnings.forEach { warning ->
+                        Text("Warning: $warning", color = MaterialTheme.colorScheme.error)
+                    }
+                    if (hasGcode && !isSlicing) {
+                        Button(onClick = onExport, modifier = Modifier.fillMaxWidth()) {
+                            Text("Export G-code")
+                        }
+                    }
+                }
+            }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { /* Auto-arrange engine will be connected here. */ }, Modifier.weight(1f)) {
+            OutlinedButton(onClick = { /* Auto-arrange engine will be connected here. */ },
+                Modifier.weight(1f), enabled = !isSlicing) {
                 Icon(Icons.Default.Settings, contentDescription = null)
                 Text(" Auto arrange")
             }
-            Button(onClick = { /* Slicing engine will be connected here. */ },
-                Modifier.weight(1f), enabled = models.isNotEmpty()) { Text("Slice") }
+            Button(onClick = onSlice, Modifier.weight(1f),
+                enabled = models.isNotEmpty() && !isSlicing) {
+                if (isSlicing) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                else Text("Slice")
+            }
+        }
+        if (hasGcode && sliceWarnings.isEmpty()) {
+            OutlinedButton(onClick = onExport, modifier = Modifier.fillMaxWidth(), enabled = !isSlicing) {
+                Text("Export G-code")
+            }
         }
         Text("Models", style = MaterialTheme.typography.titleMedium)
         if (models.isEmpty()) {
