@@ -20,7 +20,7 @@ object PrintProfileStore {
             printSpeedMmPerSecond = 50, wallCount = 2, nozzleTemperatureC = 205,
             bedTemperatureC = 55, initialLayerSpeedMmPerSecond = 22
         ), isBuiltIn = true),
-        PrintProfile("ABS · Enclosed / low cooling", PrintSettings(
+        PrintProfile("ABS · Ventilated / low cooling", PrintSettings(
             material = "ABS", qualityBalance = 50f, layerHeightMm = 0.20f,
             infillPercent = 20, printSpeedMmPerSecond = 35, wallCount = 3,
             nozzleTemperatureC = 240, bedTemperatureC = 95, coolingFanPercent = 0,
