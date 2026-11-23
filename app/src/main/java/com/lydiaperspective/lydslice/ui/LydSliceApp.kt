@@ -296,6 +296,13 @@ private fun SettingsScreen(
                     )
                 }
             }
+            if (settings.material == "ABS") {
+                Text(
+                    "ABS safety: printing can release irritating fumes and fine particles. Use only with suitable ventilation and follow the filament maker's safety guidance. This printer is not assumed to have an enclosure.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
         item {
             Text("Quality ↔ speed", style = MaterialTheme.typography.titleMedium)
