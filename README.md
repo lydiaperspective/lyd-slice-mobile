@@ -29,6 +29,12 @@ This repository contains the initial Android application foundation. The current
 
 The Gradle wrapper JAR is not included in this initial scaffold. If Gradle is installed locally, run `gradle wrapper` from the project root to generate wrapper files, then commit them.
 
+## Print profiles and tuning
+
+The settings screen includes built-in Robo R1 Plus starting profiles for PLA balanced/detail/draft and ABS low-cooling use, plus editable custom profiles saved on the device. A quality-versus-speed control adjusts layer height and print speed together, and printer/material-aware guidance warns about settings outside documented starting ranges. Presets are advisory starting points, not validated G-code recipes.
+
+See [docs/PRINTER-PROFILE.md](docs/PRINTER-PROFILE.md) for the research notes, profile values, caveats and source links.
+
 ## Slicing engine
 
 A real slicer is a major next milestone. The app will use a dedicated engine adapter so the Android UI does not depend on a particular slicer implementation. G-code must be validated against the R1 Plus firmware and printer profile before being treated as print-ready.
