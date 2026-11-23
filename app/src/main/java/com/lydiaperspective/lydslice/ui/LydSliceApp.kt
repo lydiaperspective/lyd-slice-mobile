@@ -9,6 +9,7 @@ import java.io.File
 import kotlinx.coroutines.launch
 import com.lydiaperspective.lydslice.engine.SlicingEngineRegistry
 import com.lydiaperspective.lydslice.engine.SliceRequest
+import com.lydiaperspective.lydslice.engine.OrcaSlicerEngine
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
@@ -50,6 +51,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -76,7 +78,9 @@ private enum class AppTab(val label: String) {
 fun LydSliceApp() {
     var selectedTab by remember { mutableStateOf(AppTab.Workspace) }
     val models = remember { mutableStateListOf<ModelPlacement>() }
+    val localModelFiles = remember { mutableStateMapOf<String, File>() }
     val context = LocalContext.current
+    remember(context) { OrcaSlicerEngine(context.applicationContext).also { SlicingEngineRegistry.engine = it } }
     var settings by remember { mutableStateOf(PrintSettings()) }
     var slicing by remember { mutableStateOf(false) }
     var sliceProgress by remember { mutableStateOf(0f) }
@@ -122,17 +126,26 @@ fun LydSliceApp() {
         contract = ActivityResultContracts.OpenMultipleDocuments()
     ) { uris: List<Uri> ->
         uris.forEach { uri ->
-            models.add(ModelPlacement(
-                id = UUID.randomUUID().toString(),
-                displayName = getDisplayFileName(context, uri),
-                uri = uri.toString()
-            ))
+            val id = UUID.randomUUID().toString()
+            val displayName = getDisplayFileName(context, uri)
+            runCatching {
+                val directory = File(context.filesDir, "models").apply { mkdirs() }
+                val localFile = File(directory, "$id.stl")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    localFile.outputStream().use { output -> input.copyTo(output) }
+                } ?: error("Unable to read the selected STL file.")
+                require(localFile.length() >= 84L) { "The selected STL file is empty or incomplete." }
+                localModelFiles[id] = localFile
+                models.add(ModelPlacement(id = id, displayName = displayName, uri = uri.toString()))
+            }.onFailure { error ->
+                sliceError = "Could not import $displayName: ${error.message ?: "Unknown file error"}"
+            }
         }
         if (uris.isNotEmpty()) {
             completedGcodePath = null
             sliceWarnings = emptyList()
             sliceDetails = ""
-            sliceMessage = "Models added. Slice to generate updated G-code."
+            sliceMessage = "Models added. Select one model to preview and slice."
         }
     }
 
@@ -171,8 +184,11 @@ fun LydSliceApp() {
             AppTab.Workspace -> WorkspaceScreen(
                 modifier = Modifier.padding(padding), models = models,
                 onImport = { stlPicker.launch(arrayOf("model/stl", "application/sla", "application/octet-stream", "*/*")) },
+                modelPreviewFile = models.firstOrNull()?.let { localModelFiles[it.id] },
+                gcodePreviewFile = completedGcodePath?.let(::File),
                 onRemove = {
                     models.remove(it)
+                    localModelFiles.remove(it.id)?.delete()
                     completedGcodePath = null
                     sliceWarnings = emptyList()
                     sliceError = null
@@ -342,6 +358,8 @@ private fun getDisplayFileName(context: android.content.Context, uri: Uri): Stri
 private fun WorkspaceScreen(
     modifier: Modifier = Modifier,
     models: List<ModelPlacement>,
+    modelPreviewFile: File?,
+    gcodePreviewFile: File?,
     onImport: () -> Unit,
     onRemove: (ModelPlacement) -> Unit,
     printer: PrinterProfile,
@@ -371,15 +389,32 @@ private fun WorkspaceScreen(
             Modifier.fillMaxWidth().weight(1f),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.ViewInAr, contentDescription = null, modifier = Modifier.size(52.dp))
-                    Spacer(Modifier.height(12.dp))
-                    Text("3D build-plate preview", style = MaterialTheme.typography.titleMedium)
-                    Text("The interactive 3D viewport is the next milestone.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(8.dp))
-                    Text("Models imported: ${models.size}")
+            if (modelPreviewFile != null && modelPreviewFile.isFile) {
+                ModelViewer(
+                    modelFile = modelPreviewFile,
+                    gcodeFile = gcodePreviewFile,
+                    transform = ModelTransform(
+                        positionX = printer.bedWidthMm / 2.0,
+                        positionY = printer.bedDepthMm / 2.0
+                    ),
+                    bedWidth = printer.bedWidthMm.toDouble(),
+                    bedDepth = printer.bedDepthMm.toDouble(),
+                    mode = if (gcodePreviewFile != null) ViewerMode.TOOLPATH else ViewerMode.MODEL,
+                    darkTheme = true,
+                    onSceneState = {},
+                    onError = { message -> /* Viewer errors do not invalidate the model or G-code. */ },
+                    viewerHeight = null,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.ViewInAr, contentDescription = null, modifier = Modifier.size(52.dp))
+                        Spacer(Modifier.height(12.dp))
+                        Text("3D build-plate preview", style = MaterialTheme.typography.titleMedium)
+                        Text("Import an STL to inspect it in 3D.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         }
