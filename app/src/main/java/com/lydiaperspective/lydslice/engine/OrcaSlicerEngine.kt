@@ -169,6 +169,21 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
         require(settings.initialLayerSpeedMmPerSecond in 1..100) {
             "Initial-layer speed must be between 1 and 100 mm/s."
         }
+        require(settings.initialLayerInfillSpeedMmPerSecond in 1..100) {
+            "Initial-layer infill speed must be between 1 and 100 mm/s."
+        }
+        require(settings.firstLayerFlowPercent in 50..150) {
+            "First-layer flow must be between 50% and 150%."
+        }
+        require(settings.firstLayerFanOffLayers in 0..10) {
+            "Fan-off layers must be between 0 and 10."
+        }
+        require(settings.brimWidthMm.isFinite() && settings.brimWidthMm in 0f..30f) {
+            "Brim width must be between 0 and 30 mm."
+        }
+        require(settings.raftLayers in 0..10 && settings.skirtLoops in 0..20) {
+            "Raft layers or skirt loops are outside supported ranges."
+        }
         require(settings.infillPercent in 0..100) {
             "Infill must be between 0% and 100%."
         }
@@ -235,6 +250,12 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
         set("inner_wall_speed", settings.printSpeedMmPerSecond.toString())
         set("sparse_infill_speed", settings.printSpeedMmPerSecond.toString())
         set("initial_layer_speed", settings.initialLayerSpeedMmPerSecond.toString())
+        set("initial_layer_infill_speed", settings.initialLayerInfillSpeedMmPerSecond.toString())
+        set("initial_layer_flow_ratio", decimal(settings.firstLayerFlowPercent / 100.0))
+        set("close_fan_the_first_x_layers", settings.firstLayerFanOffLayers.toString())
+        set("brim_width", decimal(settings.brimWidthMm.toDouble()))
+        set("raft_layers", settings.raftLayers.toString())
+        set("skirt_loops", settings.skirtLoops.toString())
         set("enable_support", if (settings.supportEnabled) "1" else "0")
         set("fan_min_speed", settings.coolingFanPercent.toString())
         set("fan_max_speed", settings.coolingFanPercent.toString())
@@ -247,8 +268,13 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
         set("before_layer_change_gcode", ";BEFORE_LAYER_CHANGE\nG92 E0\n;[layer_z]")
         when (settings.buildPlateAdhesion.lowercase(Locale.ROOT)) {
             "brim" -> set("brim_type", "outer_only")
-            "none" -> set("skirt_loops", "0")
-            else -> set("skirt_loops", "2")
+            "raft" -> set("raft_layers", settings.raftLayers.coerceAtLeast(1).toString())
+            "none" -> {
+                set("brim_width", "0")
+                set("skirt_loops", "0")
+                set("raft_layers", "0")
+            }
+            else -> set("skirt_loops", settings.skirtLoops.toString())
         }
         if (printer.startGcode.isNotBlank()) {
             // ctkjose/R1PLUSFIRMWARE defines a 1 mm probe offset by default and
@@ -260,6 +286,10 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
                     append("\n")
                 }
                 append(printer.startGcode)
+                if (printer.nozzlePrepGcode.isNotBlank()) {
+                    append("\n; Optional nozzle purge / wipe routine\n")
+                    append(printer.nozzlePrepGcode)
+                }
             }
             set("machine_start_gcode", startGcode)
         }
