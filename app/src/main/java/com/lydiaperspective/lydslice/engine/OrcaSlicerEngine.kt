@@ -112,7 +112,7 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
                     if (request.printer.endGcode.isBlank()) {
                         add("Printer end G-code is not configured. Review the exported file before printing.")
                     }
-                    add("Robo 3D R1 Plus dimensions and firmware settings in this profile still need verification against your physical printer.")
+                    add("Robo R1+ dimensions are based on Marlin reference values; confirm usable travel and firmware behavior on your physical printer before printing.")
                 }
                 Handler(Looper.getMainLooper()).post { onProgress(1f) }
                 SliceResult(
