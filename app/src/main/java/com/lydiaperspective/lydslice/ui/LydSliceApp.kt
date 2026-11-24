@@ -221,6 +221,7 @@ fun LydSliceApp() {
                 onImport = { stlPicker.launch(arrayOf("model/stl", "application/sla", "application/octet-stream", "*/*")) },
                 modelPreviewFile = platePreviewFile?.takeIf { it.isFile } ?: models.firstOrNull()?.let { localModelFiles[it.id] },
                 gcodePreviewFile = completedGcodePath?.let(::File),
+                onPreviewError = { message -> sliceError = "Toolpath preview unavailable: $message" },
                 onModelChange = { changed ->
                     val index = models.indexOfFirst { it.id == changed.id }
                     if (index >= 0) {
@@ -470,6 +471,7 @@ private fun WorkspaceScreen(
     models: List<ModelPlacement>,
     modelPreviewFile: File?,
     gcodePreviewFile: File?,
+    onPreviewError: (String) -> Unit,
     onImport: () -> Unit,
     onRemove: (ModelPlacement) -> Unit,
     onModelChange: (ModelPlacement) -> Unit,
@@ -535,11 +537,7 @@ private fun WorkspaceScreen(
                     toolpathProgress = previewProgress,
                     darkTheme = true,
                     onSceneState = {},
-                    onError = { message ->
-                        // Keep a valid sliced G-code result, but surface preview/parser failures
-                        // instead of silently leaving the toolpath slider with nothing to display.
-                        sliceError = "Toolpath preview unavailable: $message"
-                    },
+                    onError = onPreviewError,
                     viewerHeight = null,
                     modifier = Modifier.fillMaxSize()
                 )
