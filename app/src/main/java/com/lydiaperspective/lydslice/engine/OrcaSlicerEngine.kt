@@ -239,9 +239,10 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
         set("curr_bed_type", "High Temp Plate")
         set("hot_plate_temp", if (printer.heatedBed) settings.bedTemperatureC.toString() else "0")
         set("hot_plate_temp_initial_layer", if (printer.heatedBed) settings.bedTemperatureC.toString() else "0")
-        // OrcaSlicer requires an E-axis reset on every layer when relative extrusion
-        // addressing is enabled, otherwise cumulative E values lose precision.
-        set("layer_gcode", "G92 E0")
+        // OrcaSlicer validates relative extrusion against the before-layer-change
+        // hook (the actual setting name is before_layer_change_gcode).
+        // Resetting E here keeps the cumulative extrusion coordinate bounded.
+        set("before_layer_change_gcode", ";BEFORE_LAYER_CHANGE\nG92 E0\n;[layer_z]")
         when (settings.buildPlateAdhesion.lowercase(Locale.ROOT)) {
             "brim" -> set("brim_type", "outer_only")
             "none" -> set("skirt_loops", "0")
