@@ -929,6 +929,40 @@ private fun SettingsScreen(
             }
         }
         item {
+            Text("Supports", style = MaterialTheme.typography.titleLarge)
+            Text("Tree supports can reduce material and contact area on many models, though the best choice depends on geometry.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ProfileSwitch("Enable supports", settings.supportEnabled) {
+                onSettingsChange(settings.copy(supportEnabled = it))
+            }
+            var supportTypeMenu by remember { mutableStateOf(false) }
+            Box {
+                OutlinedButton(onClick = { supportTypeMenu = true }, enabled = settings.supportEnabled,
+                    modifier = Modifier.fillMaxWidth()) {
+                    Text("Support type: " + when (settings.supportType) {
+                        "normal" -> "Normal"
+                        "tree(manual)" -> "Tree (manual)"
+                        else -> "Tree (automatic)"
+                    })
+                }
+                androidx.compose.material3.DropdownMenu(supportTypeMenu, { supportTypeMenu = false }) {
+                    listOf(
+                        "tree(auto)" to "Tree (automatic)",
+                        "tree(manual)" to "Tree (manual)",
+                        "normal" to "Normal"
+                    ).forEach { (value, label) ->
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                onSettingsChange(settings.copy(supportType = value))
+                                supportTypeMenu = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+        item {
             SettingSlider("Wall count", settings.wallCount.toString(), settings.wallCount.toFloat(), 1f, 6f) {
                 onSettingsChange(settings.copy(wallCount = it.roundToInt().coerceIn(1, 6)))
             }
