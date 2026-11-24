@@ -27,8 +27,14 @@ data class PrintSettings(
     val bedTemperatureC: Int = 60,
     val coolingFanPercent: Int = 100,
     val initialLayerSpeedMmPerSecond: Int = 20,
+    val initialLayerInfillSpeedMmPerSecond: Int = 20,
+    val firstLayerFlowPercent: Int = 100,
+    val firstLayerFanOffLayers: Int = 1,
+    val brimWidthMm: Float = 5f,
+    val raftLayers: Int = 0,
+    val skirtLoops: Int = 2,
     val supportEnabled: Boolean = false,
-    val buildPlateAdhesion: String = "Skirt"
+    val buildPlateAdhesion: String = "Brim"
 )
 
 data class PrintProfile(
@@ -67,6 +73,8 @@ data class PrinterProfile(
     /** Positive magnitude in mm; emitted as M565 Z-negative for R1+ firmware. */
     val zProbeOffsetMm: Float = 0f,
     val startGcode: String = "",
+    /** Optional post-levelling purge / wipe moves. Must only use verified safe coordinates. */
+    val nozzlePrepGcode: String = "",
     val endGcode: String = "",
     val isBuiltIn: Boolean = false
 )
