@@ -535,7 +535,11 @@ private fun WorkspaceScreen(
                     toolpathProgress = previewProgress,
                     darkTheme = true,
                     onSceneState = {},
-                    onError = { message -> /* Viewer errors do not invalidate the model or G-code. */ },
+                    onError = { message ->
+                        // Keep a valid sliced G-code result, but surface preview/parser failures
+                        // instead of silently leaving the toolpath slider with nothing to display.
+                        sliceError = "Toolpath preview unavailable: $message"
+                    },
                     viewerHeight = null,
                     modifier = Modifier.fillMaxSize()
                 )
