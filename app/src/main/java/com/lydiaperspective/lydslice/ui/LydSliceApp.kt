@@ -600,6 +600,56 @@ private fun WorkspaceScreen(
 }
 
 @Composable
+private fun ModelTransformDialog(
+    model: ModelPlacement,
+    printer: PrinterProfile,
+    onDismiss: () -> Unit,
+    onApply: (ModelPlacement) -> Unit
+) {
+    var x by remember(model.id) { mutableStateOf(model.xMm.toString()) }
+    var y by remember(model.id) { mutableStateOf(model.yMm.toString()) }
+    var z by remember(model.id) { mutableStateOf(model.zMm.toString()) }
+    var rx by remember(model.id) { mutableStateOf(model.rotationXDegrees.toString()) }
+    var ry by remember(model.id) { mutableStateOf(model.rotationYDegrees.toString()) }
+    var rz by remember(model.id) { mutableStateOf(model.rotationZDegrees.toString()) }
+    val values = listOf(x, y, z, rx, ry, rz).map { it.toFloatOrNull() }
+    val valid = values.all { it != null && it.isFinite() }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Move and rotate model") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(model.displayName, style = MaterialTheme.typography.labelMedium)
+                Text("Position uses the model centre in printer coordinates. Z is measured up from the bed.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedTextField(x, { x = it }, label = { Text("X position (mm)") }, singleLine = true)
+                OutlinedTextField(y, { y = it }, label = { Text("Y position (mm)") }, singleLine = true)
+                OutlinedTextField(z, { z = it }, label = { Text("Z lift (mm)") }, singleLine = true)
+                Text("Rotation", style = MaterialTheme.typography.titleSmall)
+                OutlinedTextField(rx, { rx = it }, label = { Text("Rotate X (degrees)") }, singleLine = true)
+                OutlinedTextField(ry, { ry = it }, label = { Text("Rotate Y (degrees)") }, singleLine = true)
+                OutlinedTextField(rz, { rz = it }, label = { Text("Rotate Z (degrees)") }, singleLine = true)
+                Text("Build volume: ${printer.bedWidthMm} × ${printer.bedDepthMm} × ${printer.buildHeightMm} mm. Placement is checked when the plate is composed or sliced.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val parsed = values.map { it!! }
+                onApply(model.copy(
+                    xMm = parsed[0], yMm = parsed[1], zMm = parsed[2],
+                    rotationXDegrees = parsed[3], rotationYDegrees = parsed[4],
+                    rotationZDegrees = parsed[5]
+                ))
+            }, enabled = valid) { Text("Apply") }
+        },
+        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
 private fun SettingsScreen(
     modifier: Modifier = Modifier,
     settings: PrintSettings,
