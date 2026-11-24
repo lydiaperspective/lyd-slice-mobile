@@ -15,16 +15,19 @@
 - Persist imported files in app-managed storage
 - [x] Add an interactive 3D viewport with orbit, pan and zoom
 - Add model selection and touch gizmos
-- [x] Support per-model XY placement and Z rotation in the plate composition data path
+- [x] Support per-model XYZ placement and three-axis rotation in the plate composition data path
 - [x] Validate model placement against the configured build volume
 - [x] Implement deterministic shelf-based auto-arrangement with spacing and fit checks
-- [ ] Add interactive touch gizmos and manual move/rotate controls
-- [ ] Add collision-aware placement editing and alternate arrangement objectives
+- [x] Add manual numeric move/rotate controls for XYZ and all three rotation axes
+- [x] Add six-orientation flat-contact geometry heuristic and larger-first plate packing
+- [ ] Add interactive touch gizmos and collision-aware placement editing
+- [ ] Compare sliced candidate orientations using support volume, overhang risk, and actual time/material estimates
 
 ## Phase 2 — Printer and material profiles
 - Confirm the exact R1 Plus build volume and firmware-specific limits
 - Add nozzle, filament, temperatures, retraction, acceleration and start/end G-code settings
-- Add material presets and editable custom profiles
+- [x] Add material presets and editable custom print profiles
+- [x] Scope saved print profiles to individual printer profiles and support copying between printers
 - Persist projects and settings
 
 ## Phase 3 — Slicing engine
@@ -47,5 +50,5 @@
 
 ## Design constraints
 - Keep geometry, packing, slicing, and OctoPrint networking outside Compose UI code.
-- Treat print-time optimization as an objective requiring a real slicer estimate; simple geometric packing alone cannot accurately optimize print time.
+- Treat print-time optimization as an objective requiring a real slicer estimate; the current auto-orientation score is only a geometric heuristic and does not simulate supports or slice time.
 - Never silently start a print. Upload and print-start should be separate user-confirmed actions.
