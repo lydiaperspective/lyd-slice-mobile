@@ -261,6 +261,8 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
         set("raft_layers", settings.raftLayers.toString())
         set("skirt_loops", settings.skirtLoops.toString())
         set("enable_support", if (settings.supportEnabled) "1" else "0")
+        // OrcaSlicer support modes: normal, automatic tree, and manual tree.
+        set("support_type", if (settings.supportType in setOf("normal", "tree(auto)", "tree(manual)")) settings.supportType else "tree(auto)")
         set("fan_min_speed", settings.coolingFanPercent.toString())
         set("fan_max_speed", settings.coolingFanPercent.toString())
         set("curr_bed_type", "High Temp Plate")
