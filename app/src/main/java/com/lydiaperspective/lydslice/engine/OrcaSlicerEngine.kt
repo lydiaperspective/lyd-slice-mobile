@@ -1,12 +1,10 @@
 package com.lydiaperspective.lydslice.engine
 
 import android.content.Context
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import com.lydiaperspective.lydslice.data.PrinterProfile
 import com.lydiaperspective.lydslice.data.PrintSettings
-import com.lydiaperspective.lydslice.data.ModelPlacement
 import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -20,8 +18,8 @@ import ru.ytkab0bp.slicebeam.slic3r.SliceListener
  * On-device OrcaSlicer Mobile engine adapter.
  *
  * Native ABI and engine archive are pinned in scripts/fetch-orca-mobile-engine.sh.
- * This first integration intentionally slices one STL at a time; it refuses multi-model
- * requests rather than silently overlapping or dropping objects.
+ * Multiple imported STLs are packed onto a single plate and merged into a binary STL
+ * before being passed to the native OrcaSlicer model API.
  */
 class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
     override suspend fun slice(
@@ -33,10 +31,15 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
             "The OrcaSlicer native engine could not be loaded: ${Native.getLoadError()?.message ?: "unknown native loading error"}"
         }
 
-        val model = request.models.single()
-        val input = copyModelIntoCache(model)
+        val arrangedModels = StlPlateComposer.arrange(context, request.models, request.printer)
         val outputDirectory = File(context.filesDir, "slices").apply { mkdirs() }
-        val output = File(outputDirectory, safeName(model.displayName) + ".gcode")
+        val input = StlPlateComposer.compose(
+            context,
+            arrangedModels,
+            request.printer,
+            File(outputDirectory, "combined-plate.stl")
+        )
+        val output = File(outputDirectory, "plate-print.gcode")
         val config = File(outputDirectory, "active-printer.ini")
         if (output.exists()) require(output.delete()) { "Cannot replace the previous G-code file." }
         writeOrcaConfig(request.printer, request.settings, config)
@@ -124,9 +127,8 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
 
 
     private fun validateRequest(request: SliceRequest) {
-        require(request.models.size == 1) {
-            "This build currently slices one STL per job. Multi-model plate composition is not enabled yet."
-        }
+        require(request.models.isNotEmpty()) { "Import at least one STL model before slicing." }
+        require(request.models.size <= 100) { "A single plate supports up to 100 models." }
         val printer = request.printer
         val settings = request.settings
         require(printer.buildPlateShape.equals("Rectangular", ignoreCase = true)) {
@@ -189,22 +191,6 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
         require(hasMotion) {
             "The slicer output contains no movement commands. The generated file was rejected."
         }
-    }
-
-    private fun copyModelIntoCache(model: ModelPlacement): File {
-        val directory = File(context.filesDir, "slice-input").apply { mkdirs() }
-        val destination = File(directory, safeName(model.displayName) + ".stl")
-        val uri = Uri.parse(model.uri)
-        val input = when (uri.scheme) {
-            "content" -> context.contentResolver.openInputStream(uri)
-            "file" -> File(uri.path ?: error("Invalid model file URI")).inputStream()
-            else -> null
-        } ?: error("Cannot open ${model.displayName}. Please import the STL again.")
-        input.use { source ->
-            destination.outputStream().use { output -> source.copyTo(output) }
-        }
-        require(destination.length() >= 84L) { "The selected STL file is empty or incomplete." }
-        return destination
     }
 
     private fun writeOrcaConfig(
