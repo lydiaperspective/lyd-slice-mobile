@@ -257,7 +257,7 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
                 if (printer.zProbeOffsetMm > 0f) {
                     append("M565 Z-")
                     append(decimal(printer.zProbeOffsetMm.toDouble()))
-                    append("\\n")
+                    append("\n")
                 }
                 append(printer.startGcode)
             }
