@@ -398,11 +398,15 @@ fun LydSliceApp() {
                     PrinterProfileStore.saveSelectedId(context, it.id)
                 },
                 onProfileChange = { edited ->
+                    val previousPrinterId = activePrinter.id
                     val updated = if (activePrinter.isBuiltIn) edited.copy(
                         id = UUID.randomUUID().toString(),
                         name = if (edited.name != activePrinter.name) edited.name else activePrinter.name + " (Custom)",
                         isBuiltIn = false
                     ) else edited.copy(isBuiltIn = false)
+                    if (previousPrinterId != updated.id) {
+                        PrintProfileStore.saveCustom(context, updated.id, customProfiles.toList())
+                    }
                     activePrinter = updated
                     platePreviewFile = null
                     completedGcodePath = null
