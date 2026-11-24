@@ -49,9 +49,9 @@ object StlPlateComposer {
         }.sortedByDescending { (_, orientation) ->
             orientation.bounds.width * orientation.bounds.depth
         }
-        for ((index, orientation) in orientedModels) {
+        for ((index, chosenPose) in orientedModels) {
             val mesh = meshes[index]
-            val oriented = orientation.bounds
+            val oriented = chosenPose.bounds
             val orientations = listOf(
                 Triple(0f, oriented.width, oriented.depth),
                 Triple(90f, oriented.depth, oriented.width)
@@ -81,8 +81,8 @@ object StlPlateComposer {
                 xMm = printerX.toFloat(),
                 yMm = printerY.toFloat(),
                 zMm = 0f,
-                rotationXDegrees = orientation.x,
-                rotationYDegrees = orientation.y,
+                rotationXDegrees = chosenPose.x,
+                rotationYDegrees = chosenPose.y,
                 rotationZDegrees = rotation,
                 sizeXmm = width.toFloat(),
                 sizeYmm = depth.toFloat(),
