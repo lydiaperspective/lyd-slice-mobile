@@ -49,7 +49,7 @@ See [docs/PRINTER-SETTINGS.md](docs/PRINTER-SETTINGS.md) for the Cura-inspired s
 - Multiple STL files are parsed and composed into a single binary STL plate before native slicing. Binary and ASCII STL input are supported.
 - Auto-arrange uses a deterministic shelf-packing layout with 3 mm spacing, checks the configured rectangular build volume, and updates the plate preview.
 - The plate composer supports stored XY centre positions, Z rotation and Z offset; interactive touch controls for those transforms are still pending.
-- The composer currently limits a plate to 100 models and 2 million triangles total. Circular/custom build plates are not supported by auto-arrange.
+- The composer currently limits a plate to 100 models and 500,000 triangles total, with a 64 MB per-file input limit. Circular/custom build plates are not supported by auto-arrange.
 - The native engine currently targets `arm64-v8a` and Android API 28+.
 - G-code output is local and can be exported through Android's Save File picker.
 - Slicing performs preflight checks for supported rectangular beds, positive machine dimensions, nozzle/filament values, temperature ceilings, layer height, and speed/infill ranges.
