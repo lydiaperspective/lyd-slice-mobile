@@ -64,6 +64,8 @@ data class PrinterProfile(
     val gantryHeightMm: Float = 0f,
     val maxNozzleTemperatureC: Int = 290,
     val maxBedTemperatureC: Int = 100,
+    /** Positive magnitude in mm; emitted as M565 Z-negative for R1+ firmware. */
+    val zProbeOffsetMm: Float = 0f,
     val startGcode: String = "",
     val endGcode: String = "",
     val isBuiltIn: Boolean = false
