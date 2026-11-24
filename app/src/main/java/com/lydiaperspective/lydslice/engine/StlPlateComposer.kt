@@ -190,10 +190,16 @@ object StlPlateComposer {
                     tri.position(12)
                     repeat(3) {
                         val x = tri.float; val y = tri.float; val z = tri.float
+                        require(x.isFinite() && y.isFinite() && z.isFinite()) {
+                            "STL contains non-finite vertex coordinates."
+                        }
                         vertices[target++] = x; vertices[target++] = y; vertices[target++] = z
                         minX = min(minX, x.toDouble()); minY = min(minY, y.toDouble()); minZ = min(minZ, z.toDouble())
                         maxX = max(maxX, x.toDouble()); maxY = max(maxY, y.toDouble()); maxZ = max(maxZ, z.toDouble())
                     }
+                }
+                require(maxX > minX && maxY > minY && maxZ > minZ) {
+                    "STL has no measurable 3D volume."
                 }
                 return Mesh(vertices, Bounds(minX, minY, minZ, maxX, maxY, maxZ))
             }
