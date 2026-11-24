@@ -13,9 +13,11 @@ object PrinterProfileStore {
         PrinterProfile(
             id = "robo3d-r1-plus",
             name = "Robo 3D R1 Plus",
-            bedWidthMm = 220f,
-            bedDepthMm = 220f,
-            buildHeightMm = 250f,
+            // Marlin's published Robo3D R1+ machine profile lists 240 × 254 × 240 mm.
+            // Treat these as nominal firmware coordinates; verify usable travel on the physical unit.
+            bedWidthMm = 240f,
+            bedDepthMm = 254f,
+            buildHeightMm = 240f,
             buildPlateShape = "Rectangular",
             heatedBed = true,
             nozzleDiametersMm = listOf(0.4f),
@@ -25,6 +27,26 @@ object PrinterProfileStore {
             gcodeFlavor = "Marlin",
             maxNozzleTemperatureC = 290,
             maxBedTemperatureC = 100,
+            startGcode = """ 
+                ; Robo 3D R1+ start sequence
+                G21 ; Use millimeters
+                G90 ; Absolute XYZ positioning
+                M82 ; Absolute extrusion
+                M140 S[bed_temperature_initial_layer_single]
+                M104 S[nozzle_temperature_initial_layer]
+                M190 S[bed_temperature_initial_layer_single]
+                M109 S[nozzle_temperature_initial_layer]
+                G28 ; Home all axes
+                G29 ; Run R1+ firmware bed leveling
+                G92 E0 ; Reset extrusion distance
+            """.trimIndent(),
+            endGcode = """
+                ; Robo 3D R1+ end sequence
+                M104 S0 ; Turn off hotend
+                M140 S0 ; Turn off heated bed
+                M107 ; Turn off part cooling fan
+                M84 ; Disable motors
+            """.trimIndent(),
             isBuiltIn = true
         ),
         PrinterProfile(
