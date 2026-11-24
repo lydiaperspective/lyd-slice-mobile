@@ -686,6 +686,57 @@ private fun SettingsScreen(
             }
         }
         item {
+            Text("Bed adhesion & first layers", style = MaterialTheme.typography.titleLarge)
+            Text("Tune the settings that matter most while the print is bonding to the bed. Start conservatively and change one value at a time.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            var adhesionMenu by remember { mutableStateOf(false) }
+            Box {
+                OutlinedButton(onClick = { adhesionMenu = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Adhesion: ${settings.buildPlateAdhesion}")
+                }
+                androidx.compose.material3.DropdownMenu(adhesionMenu, { adhesionMenu = false }) {
+                    listOf("None", "Skirt", "Brim", "Raft").forEach { type ->
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text(type) },
+                            onClick = { onSettingsChange(settings.copy(buildPlateAdhesion = type)); adhesionMenu = false }
+                        )
+                    }
+                }
+            }
+            when (settings.buildPlateAdhesion) {
+                "Brim" -> SettingSlider("Brim width", "${"%.1f".format(settings.brimWidthMm)} mm",
+                    settings.brimWidthMm, 0f, 15f) {
+                    onSettingsChange(settings.copy(brimWidthMm = (it * 2f).roundToInt() / 2f))
+                }
+                "Raft" -> SettingSlider("Raft layers", settings.raftLayers.toString(),
+                    settings.raftLayers.toFloat(), 1f, 6f) {
+                    onSettingsChange(settings.copy(raftLayers = it.roundToInt().coerceIn(1, 6)))
+                }
+                "Skirt" -> SettingSlider("Skirt loops", settings.skirtLoops.toString(),
+                    settings.skirtLoops.toFloat(), 0f, 10f) {
+                    onSettingsChange(settings.copy(skirtLoops = it.roundToInt()))
+                }
+            }
+            SettingSlider("First-layer flow", "${settings.firstLayerFlowPercent}%",
+                settings.firstLayerFlowPercent.toFloat(), 80f, 120f) {
+                onSettingsChange(settings.copy(firstLayerFlowPercent = it.roundToInt()))
+            }
+            SettingSlider("First-layer infill speed", "${settings.initialLayerInfillSpeedMmPerSecond} mm/s",
+                settings.initialLayerInfillSpeedMmPerSecond.toFloat(), 5f, 40f) {
+                onSettingsChange(settings.copy(initialLayerInfillSpeedMmPerSecond = it.roundToInt()))
+            }
+            SettingSlider("Fan-off layers", settings.firstLayerFanOffLayers.toString(),
+                settings.firstLayerFanOffLayers.toFloat(), 0f, 5f) {
+                onSettingsChange(settings.copy(firstLayerFanOffLayers = it.roundToInt()))
+            }
+            Text("The part-cooling fan stays off for the selected number of initial layers, then uses the normal part-cooling setting. This controls fan-off layers rather than arbitrary fan percentages for each individual layer.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            SettingSlider("First-layer speed", "${settings.initialLayerSpeedMmPerSecond} mm/s",
+                settings.initialLayerSpeedMmPerSecond.toFloat(), 5f, 40f) {
+                onSettingsChange(settings.copy(initialLayerSpeedMmPerSecond = it.roundToInt()))
+            }
+        }
+        item {
             SettingSlider("Layer height", "${"%.2f".format(settings.layerHeightMm)} mm",
                 settings.layerHeightMm, 0.05f, 0.32f) {
                 onSettingsChange(settings.copy(layerHeightMm = (it * 100f).roundToInt() / 100f))
@@ -768,6 +819,8 @@ private fun settingsWarning(settings: PrintSettings, printer: PrinterProfile): S
         return "Above 60 mm/s is outside this app's conservative R1 Plus starting range. Motion or extrusion may become inconsistent."
     if (settings.initialLayerSpeedMmPerSecond > 30)
         return "A fast first layer can reduce bed adhesion. Robo recommends a slower first layer when adhesion is unreliable."
+    if (settings.firstLayerFlowPercent !in 95..105)
+        return "First-layer flow is outside the conservative 95–105% range. Excess flow can make the first layer rough; too little can weaken bonding. Check bed cleanliness and Z offset before compensating with flow."
     if (settings.qualityBalance > 80f)
         return "Strong speed priority trades away visible detail and can make extrusion less consistent."
     return null
@@ -951,6 +1004,10 @@ private fun PrinterScreen(
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(profile.startGcode, { onProfileChange(profile.copy(startGcode = it)) },
                 modifier = Modifier.fillMaxWidth(), label = { Text("Machine start G-code") }, minLines = 4)
+            OutlinedTextField(profile.nozzlePrepGcode, { onProfileChange(profile.copy(nozzlePrepGcode = it)) },
+                modifier = Modifier.fillMaxWidth(), label = { Text("Nozzle purge / wipe G-code (optional)") }, minLines = 3)
+            Text("This runs after the start sequence and G29. Only enter moves for a verified clear area or an installed wipe brush. No physical nozzle brush is assumed.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(profile.endGcode, { onProfileChange(profile.copy(endGcode = it)) },
                 modifier = Modifier.fillMaxWidth(), label = { Text("Machine end G-code") }, minLines = 4)
         }
