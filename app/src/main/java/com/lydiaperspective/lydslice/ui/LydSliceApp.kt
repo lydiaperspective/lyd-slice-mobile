@@ -911,6 +911,14 @@ private fun PrinterScreen(
             PrinterNumberField("Maximum bed temperature (°C)", profile.maxBedTemperatureC.toFloat()) {
                 onProfileChange(profile.copy(maxBedTemperatureC = it.toInt().coerceIn(0, 200)))
             }
+            PrinterNumberField("Firmware Z-probe offset (mm)", profile.zProbeOffsetMm) {
+                onProfileChange(profile.copy(zProbeOffsetMm = it.coerceIn(0f, 10f)))
+            }
+            Text(
+                "For the R1+ firmware this is emitted as M565 Z-negative before G28. The firmware repository sets a 1 mm default; recalibrate if the first-layer height is incorrect.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         item {
             Text("Machine settings", style = MaterialTheme.typography.titleLarge)
