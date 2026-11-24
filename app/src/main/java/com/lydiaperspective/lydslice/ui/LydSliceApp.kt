@@ -780,12 +780,6 @@ private fun SettingsScreen(
                 onSettingsChange(settings.copy(coolingFanPercent = it.roundToInt()))
             }
         }
-        item {
-            SettingSlider("Initial layer speed", "${settings.initialLayerSpeedMmPerSecond} mm/s",
-                settings.initialLayerSpeedMmPerSecond.toFloat(), 5f, 40f) {
-                onSettingsChange(settings.copy(initialLayerSpeedMmPerSecond = it.roundToInt()))
-            }
-        }
         items(profiles.filterNot { it.isBuiltIn }) { profile ->
             OutlinedButton(onClick = { onDeleteProfile(profile) }) {
                 Icon(Icons.Default.Delete, contentDescription = null)
