@@ -24,8 +24,9 @@ object PrinterProfileStore {
             activeNozzleDiameterMm = 0.4f,
             filamentDiameterMm = 1.75f,
             extruderCount = 1,
-            // This custom Marlin-derived firmware documents its slicer flavor as RepRap (Marlin/Sprinter).
-            gcodeFlavor = "RepRap",
+            // The firmware is Marlin-derived. Cura calls its dialect RepRap (Marlin/Sprinter);
+            // OrcaSlicer exposes the compatible legacy Marlin flavor, not that Cura label.
+            gcodeFlavor = "Marlin",
             maxNozzleTemperatureC = 290,
             maxBedTemperatureC = 110,
             zProbeOffsetMm = 1.0f,
