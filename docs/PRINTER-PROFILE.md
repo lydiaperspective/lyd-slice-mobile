@@ -10,7 +10,7 @@ This firmware is a Marlin-derived rewrite. Its README says its G-code behavior i
 
 ## Built-in starting profiles
 
-The built-in R1+ profile now uses OrcaSlicer's legacy Marlin flavor, relative extrusion, the firmware's 1 mm Z-probe offset (emitted as `M565 Z-1.0` before `G28`), then `G28` and `G29`. The offset is an editable profile field; it is emitted before homing because this firmware applies `state.zoffset` during `G28`. Start/end G-code fields remain editable. The end script disables the hot end, bed and fan, then disables the motors.
+The built-in R1+ profile now uses OrcaSlicer's legacy Marlin flavor, relative extrusion, the firmware's 1 mm Z-probe offset (emitted as `M565 Z-1.0` before `G28`), then `G28` and `G29`. The offset is an editable profile field; it is emitted before homing because this firmware applies `state.zoffset` during `G28`. Start/end G-code fields remain editable. The end script disables the hot end, bed and fan, then disables the motors. The default nozzle-preparation script then raises Z, moves to X5/Y5, lowers to Z0.3, draws a short 75 mm purge line to X80 with relative extrusion, retracts slightly and lifts Z again. This is a bed purge line, not a brush wipe. Its coordinates are a provisional front-edge path: verify it lies on the actual usable bed surface and clear of clips/protectors, and edit the nozzle-preparation G-code if your bed geometry differs.
 
 The 290°C hot-end and 110°C bed values are firmware safety ceilings, not recommended material setpoints. The app's material profiles remain within Robo's published PLA/ABS guidance. The firmware repository does not establish the protector's actual usable XY footprint.
 
