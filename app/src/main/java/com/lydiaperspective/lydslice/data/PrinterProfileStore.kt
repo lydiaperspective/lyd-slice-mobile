@@ -24,9 +24,11 @@ object PrinterProfileStore {
             activeNozzleDiameterMm = 0.4f,
             filamentDiameterMm = 1.75f,
             extruderCount = 1,
-            gcodeFlavor = "Marlin",
+            // This custom Marlin-derived firmware documents its slicer flavor as RepRap (Marlin/Sprinter).
+            gcodeFlavor = "RepRap",
             maxNozzleTemperatureC = 290,
-            maxBedTemperatureC = 100,
+            maxBedTemperatureC = 110,
+            zProbeOffsetMm = 1.0f,
             startGcode = """ 
                 ; Robo 3D R1+ start sequence
                 G21 ; Use millimeters
@@ -140,6 +142,7 @@ object PrinterProfileStore {
             gantryHeightMm = optDouble("gantryHeightMm", 0.0).toFloat(),
             maxNozzleTemperatureC = optInt("maxNozzleTemperatureC", 290),
             maxBedTemperatureC = optInt("maxBedTemperatureC", 100),
+            zProbeOffsetMm = optDouble("zProbeOffsetMm", 0.0).toFloat(),
             startGcode = optString("startGcode", ""),
             endGcode = optString("endGcode", "")
         )
