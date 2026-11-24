@@ -925,7 +925,7 @@ private fun PrinterScreen(
             Box {
                 OutlinedButton(onClick = { flavorMenu = true }) { Text("G-code flavor: " + profile.gcodeFlavor) }
                 androidx.compose.material3.DropdownMenu(flavorMenu, { flavorMenu = false }) {
-                    listOf("Marlin", "RepRap", "Klipper", "UltiGCode", "Griffin", "Makerbot", "Other").forEach { flavor ->
+                    listOf("Marlin", "Marlin 2", "RepRapFirmware", "Repetier", "Klipper").forEach { flavor ->
                         androidx.compose.material3.DropdownMenuItem(
                             text = { Text(flavor) },
                             onClick = { onProfileChange(profile.copy(gcodeFlavor = flavor)); flavorMenu = false }
