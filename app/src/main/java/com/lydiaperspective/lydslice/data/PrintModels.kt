@@ -39,7 +39,8 @@ data class PrintProfile(
 
 /**
  * Machine-level configuration inspired by Cura's Printer / Extruder settings.
- * Build volume for the R1 Plus is provisional and must be verified on the actual machine.
+ * The built-in R1+ dimensions follow Marlin's published machine reference and still
+ * require confirmation against the usable travel of the individual physical printer.
  */
 data class PrinterProfile(
     val id: String = UUID.randomUUID().toString(),
