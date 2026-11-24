@@ -10,6 +10,9 @@ import kotlinx.coroutines.launch
 import com.lydiaperspective.lydslice.engine.SlicingEngineRegistry
 import com.lydiaperspective.lydslice.engine.SliceRequest
 import com.lydiaperspective.lydslice.engine.OrcaSlicerEngine
+import com.lydiaperspective.lydslice.engine.StlPlateComposer
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
@@ -79,6 +82,8 @@ fun LydSliceApp() {
     var selectedTab by remember { mutableStateOf(AppTab.Workspace) }
     val models = remember { mutableStateListOf<ModelPlacement>() }
     val localModelFiles = remember { mutableStateMapOf<String, File>() }
+    var platePreviewFile by remember { mutableStateOf<File?>(null) }
+    var arranging by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val orcaEngine = remember(context) { OrcaSlicerEngine(context.applicationContext) }
     SlicingEngineRegistry.engine = orcaEngine
@@ -146,7 +151,31 @@ fun LydSliceApp() {
             completedGcodePath = null
             sliceWarnings = emptyList()
             sliceDetails = ""
-            sliceMessage = "Models added. Select one model to preview and slice."
+            sliceMessage = "Arranging build plate…"
+            if (models.isNotEmpty()) {
+                scope.launch {
+                    arranging = true
+                    runCatching {
+                        val arranged = withContext(Dispatchers.IO) {
+                            StlPlateComposer.arrange(context, models.toList(), activePrinter)
+                        }
+                        models.clear()
+                        models.addAll(arranged)
+                        platePreviewFile = withContext(Dispatchers.IO) {
+                            StlPlateComposer.compose(
+                                context, arranged, activePrinter,
+                                File(context.cacheDir, "plate-preview.stl")
+                            )
+                        }
+                        sliceMessage = "Build plate ready · ${models.size} model(s)"
+                        sliceError = null
+                    }.onFailure { error ->
+                        sliceError = error.message ?: "Could not arrange the imported models."
+                        sliceMessage = "Build plate needs attention"
+                    }
+                    arranging = false
+                }
+            }
         }
     }
 
@@ -185,15 +214,41 @@ fun LydSliceApp() {
             AppTab.Workspace -> WorkspaceScreen(
                 modifier = Modifier.padding(padding), models = models,
                 onImport = { stlPicker.launch(arrayOf("model/stl", "application/sla", "application/octet-stream", "*/*")) },
-                modelPreviewFile = models.firstOrNull()?.let { localModelFiles[it.id] },
+                modelPreviewFile = platePreviewFile?.takeIf { it.isFile } ?: models.firstOrNull()?.let { localModelFiles[it.id] },
                 gcodePreviewFile = completedGcodePath?.let(::File),
                 onRemove = {
                     models.remove(it)
                     localModelFiles.remove(it.id)?.delete()
+                    platePreviewFile = null
                     completedGcodePath = null
                     sliceWarnings = emptyList()
                     sliceError = null
-                    sliceMessage = "Model list changed. Slice again to update G-code."
+                    sliceMessage = "Model list changed. Arrange the plate before slicing."
+                },
+                arranging = arranging,
+                onAutoArrange = {
+                    if (models.isNotEmpty()) scope.launch {
+                        arranging = true
+                        completedGcodePath = null
+                        sliceError = null
+                        sliceMessage = "Arranging build plate…"
+                        runCatching {
+                            val arranged = withContext(Dispatchers.IO) {
+                                StlPlateComposer.arrange(context, models.toList(), activePrinter)
+                            }
+                            models.clear()
+                            models.addAll(arranged)
+                            platePreviewFile = withContext(Dispatchers.IO) {
+                                StlPlateComposer.compose(context, arranged, activePrinter,
+                                    File(context.cacheDir, "plate-preview.stl"))
+                            }
+                            sliceMessage = "Build plate arranged · ${models.size} model(s)"
+                        }.onFailure { error ->
+                            sliceError = error.message ?: "Automatic arrangement failed."
+                            sliceMessage = "Arrangement failed"
+                        }
+                        arranging = false
+                    }
                 },
                 printer = activePrinter,
                 isSlicing = slicing,
@@ -365,6 +420,8 @@ private fun WorkspaceScreen(
     onRemove: (ModelPlacement) -> Unit,
     printer: PrinterProfile,
     isSlicing: Boolean,
+    arranging: Boolean,
+    onAutoArrange: () -> Unit,
     sliceProgress: Float,
     sliceMessage: String,
     sliceDetails: String,
@@ -453,18 +510,15 @@ private fun WorkspaceScreen(
                 }
             }
         }
-        if (models.size > 1) {
-            Text("The current Orca engine adapter slices one STL per job. Remove the extra models to continue.",
-                color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { /* Auto-arrange engine will be connected here. */ },
-                Modifier.weight(1f), enabled = !isSlicing) {
-                Icon(Icons.Default.Settings, contentDescription = null)
-                Text(" Auto arrange")
+            OutlinedButton(onClick = onAutoArrange,
+                Modifier.weight(1f), enabled = !isSlicing && !arranging && models.isNotEmpty()) {
+                if (arranging) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                else Icon(Icons.Default.Settings, contentDescription = null)
+                Text(if (arranging) " Arranging…" else " Auto arrange")
             }
             Button(onClick = onSlice, Modifier.weight(1f),
-                enabled = models.size == 1 && !isSlicing) {
+                enabled = models.isNotEmpty() && !isSlicing && !arranging) {
                 if (isSlicing) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 else Text("Slice")
             }
