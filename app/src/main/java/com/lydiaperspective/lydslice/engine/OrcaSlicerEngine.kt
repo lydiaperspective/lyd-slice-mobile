@@ -28,9 +28,7 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
         request: SliceRequest,
         onProgress: (Float) -> Unit
     ): SliceResult = withContext(Dispatchers.IO) {
-        require(request.models.size == 1) {
-            "The first Orca integration currently slices one STL at a time. Remove the extra models and try again."
-        }
+        validateRequest(request)
         check(Native.isLoaded()) {
             "The OrcaSlicer native engine could not be loaded: ${Native.getLoadError()?.message ?: "unknown native loading error"}"
         }
@@ -52,11 +50,40 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
             require(bounds.size == 6 && bounds.all { it.isFinite() }) {
                 "The slicer could not calculate valid model dimensions."
             }
+            require(bounds[3] > bounds[0] && bounds[4] > bounds[1] && bounds[5] > bounds[2]) {
+                "The STL has no measurable printable volume."
+            }
+            val modelWidth = bounds[3] - bounds[0]
+            val modelDepth = bounds[4] - bounds[1]
+            val modelHeight = bounds[5] - bounds[2]
+            require(modelWidth <= request.printer.bedWidthMm + 0.01) {
+                "Model width is ${decimal(modelWidth)} mm, larger than the ${request.printer.bedWidthMm} mm build plate."
+            }
+            require(modelDepth <= request.printer.bedDepthMm + 0.01) {
+                "Model depth is ${decimal(modelDepth)} mm, larger than the ${request.printer.bedDepthMm} mm build plate."
+            }
+            require(modelHeight <= request.printer.buildHeightMm + 0.01) {
+                "Model height is ${decimal(modelHeight)} mm, larger than the ${request.printer.buildHeightMm} mm build height."
+            }
             val centerX = (bounds[0] + bounds[3]) / 2.0
             val centerY = (bounds[1] + bounds[4]) / 2.0
             val bedOriginX = if (request.printer.originAtCenter) 0.0 else request.printer.bedWidthMm / 2.0
             val bedOriginY = if (request.printer.originAtCenter) 0.0 else request.printer.bedDepthMm / 2.0
-            nativeModel.translate(bedOriginX - centerX, bedOriginY - centerY, 0.0)
+            nativeModel.translate(bedOriginX - centerX, bedOriginY - centerY, -bounds[2])
+
+            val plateMinX = if (request.printer.originAtCenter) -request.printer.bedWidthMm / 2.0 else 0.0
+            val plateMinY = if (request.printer.originAtCenter) -request.printer.bedDepthMm / 2.0 else 0.0
+            val placedBounds = nativeModel.boundingBoxExactGlobal
+            require(
+                placedBounds[0] >= plateMinX - 0.01 &&
+                    placedBounds[1] >= plateMinY - 0.01 &&
+                    placedBounds[2] >= -0.01 &&
+                    placedBounds[3] <= plateMinX + request.printer.bedWidthMm + 0.01 &&
+                    placedBounds[4] <= plateMinY + request.printer.bedDepthMm + 0.01 &&
+                    placedBounds[5] <= request.printer.buildHeightMm + 0.01
+            ) {
+                "The model could not be positioned fully inside the configured build volume."
+            }
 
             val nativeResult = nativeModel.slice(
                 config.absolutePath,
@@ -70,6 +97,7 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
                 require(output.isFile && output.length() > 0L) {
                     "OrcaSlicer returned without creating a G-code file."
                 }
+                validateGcodeOutput(output)
                 val filamentMm = (0 until 15).sumOf { role ->
                     runCatching { result.getUsedFilamentMM(role) }.getOrDefault(0.0)
                 }.toFloat()
@@ -91,6 +119,75 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
                     warnings = warnings
                 )
             }
+        }
+    }
+
+
+    private fun validateRequest(request: SliceRequest) {
+        require(request.models.size == 1) {
+            "This build currently slices one STL per job. Multi-model plate composition is not enabled yet."
+        }
+        val printer = request.printer
+        val settings = request.settings
+        require(printer.buildPlateShape.equals("Rectangular", ignoreCase = true)) {
+            "Only rectangular build plates are supported by this slicer integration. Circular and custom plate geometry must be added before slicing."
+        }
+        require(printer.bedWidthMm.isFinite() && printer.bedWidthMm > 0f) {
+            "Printer build-plate width must be greater than zero."
+        }
+        require(printer.bedDepthMm.isFinite() && printer.bedDepthMm > 0f) {
+            "Printer build-plate depth must be greater than zero."
+        }
+        require(printer.buildHeightMm.isFinite() && printer.buildHeightMm > 0f) {
+            "Printer build height must be greater than zero."
+        }
+        require(printer.activeNozzleDiameterMm.isFinite() && printer.activeNozzleDiameterMm > 0f) {
+            "Select a valid installed nozzle diameter before slicing."
+        }
+        require(printer.filamentDiameterMm.isFinite() && printer.filamentDiameterMm > 0f) {
+            "Filament diameter must be greater than zero."
+        }
+        require(settings.layerHeightMm.isFinite() && settings.layerHeightMm > 0f) {
+            "Layer height must be greater than zero."
+        }
+        require(settings.layerHeightMm <= printer.activeNozzleDiameterMm) {
+            "Layer height cannot exceed the selected nozzle diameter."
+        }
+        require(settings.nozzleTemperatureC in 1..printer.maxNozzleTemperatureC) {
+            "Nozzle temperature must be between 1°C and the printer profile's ${printer.maxNozzleTemperatureC}°C limit."
+        }
+        if (printer.heatedBed) {
+            require(settings.bedTemperatureC in 0..printer.maxBedTemperatureC) {
+                "Bed temperature exceeds the printer profile's ${printer.maxBedTemperatureC}°C limit."
+            }
+        }
+        require(settings.printSpeedMmPerSecond in 1..300) {
+            "Print speed must be between 1 and 300 mm/s."
+        }
+        require(settings.initialLayerSpeedMmPerSecond in 1..100) {
+            "Initial-layer speed must be between 1 and 100 mm/s."
+        }
+        require(settings.infillPercent in 0..100) {
+            "Infill must be between 0% and 100%."
+        }
+        require(settings.wallCount in 1..20 && settings.topBottomLayers in 0..30) {
+            "Wall and top/bottom layer counts are outside supported ranges."
+        }
+        require(printer.gcodeFlavor.lowercase(Locale.ROOT) != "other") {
+            "Choose a specific G-code flavor. The generic 'Other' option cannot be mapped safely to OrcaSlicer."
+        }
+    }
+
+    private fun validateGcodeOutput(file: File) {
+        val hasMotion = file.useLines { lines ->
+            lines.any { line ->
+                val command = line.trimStart()
+                command.startsWith("G0 ") || command.startsWith("G1 ") ||
+                    command == "G0" || command == "G1"
+            }
+        }
+        require(hasMotion) {
+            "The slicer output contains no movement commands. The generated file was rejected."
         }
     }
 
