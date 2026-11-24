@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material3.AlertDialog
@@ -114,9 +115,6 @@ fun LydSliceApp() {
             }
         }
     }
-    val customProfiles = remember {
-        mutableStateListOf<PrintProfile>().apply { addAll(PrintProfileStore.loadCustom(context)) }
-    }
     val builtInProfiles = remember { PrintProfileStore.builtInProfiles() }
     val builtInPrinterProfiles = remember { PrinterProfileStore.builtInProfiles() }
     val customPrinterProfiles = remember {
@@ -126,6 +124,11 @@ fun LydSliceApp() {
         mutableStateOf((builtInPrinterProfiles + customPrinterProfiles).firstOrNull {
             it.id == PrinterProfileStore.selectedId(context)
         } ?: builtInPrinterProfiles.first())
+    }
+    val customProfiles = remember(activePrinter.id) {
+        mutableStateListOf<PrintProfile>().apply {
+            addAll(PrintProfileStore.loadCustom(context, activePrinter.id))
+        }
     }
 
     val stlPicker = rememberLauncherForActivityResult(
@@ -218,6 +221,24 @@ fun LydSliceApp() {
                 onImport = { stlPicker.launch(arrayOf("model/stl", "application/sla", "application/octet-stream", "*/*")) },
                 modelPreviewFile = platePreviewFile?.takeIf { it.isFile } ?: models.firstOrNull()?.let { localModelFiles[it.id] },
                 gcodePreviewFile = completedGcodePath?.let(::File),
+                onModelChange = { changed ->
+                    val index = models.indexOfFirst { it.id == changed.id }
+                    if (index >= 0) {
+                        models[index] = changed
+                        platePreviewFile = null
+                        completedGcodePath = null
+                        sliceMessage = "Model placement changed. Slice again to update G-code."
+                        scope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    StlPlateComposer.compose(context, models.toList(), activePrinter,
+                                        File(context.cacheDir, "plate-preview.stl"))
+                                }
+                            }.onFailure { sliceError = it.message ?: "Could not update the plate preview." }
+                            platePreviewFile = File(context.cacheDir, "plate-preview.stl").takeIf { it.isFile }
+                        }
+                    }
+                },
                 onRemove = {
                     models.remove(it)
                     localModelFiles.remove(it.id)?.delete()
@@ -330,6 +351,20 @@ fun LydSliceApp() {
                     sliceMessage = "Print settings changed. Slice again to update G-code."
                 },
                 profiles = builtInProfiles + customProfiles,
+                printerProfiles = builtInPrinterProfiles + customPrinterProfiles,
+                onCopyProfile = { source, destinationId ->
+                    val destinationProfiles = PrintProfileStore.loadCustom(context, destinationId).toMutableList()
+                    destinationProfiles.add(source.copy(
+                        id = UUID.randomUUID().toString(),
+                        name = source.name + " (Copy)",
+                        isBuiltIn = false
+                    ))
+                    PrintProfileStore.saveCustom(context, destinationId, destinationProfiles)
+                    if (destinationId == activePrinter.id) {
+                        customProfiles.clear()
+                        customProfiles.addAll(destinationProfiles)
+                    }
+                },
                 onApplyProfile = {
                     settings = it.settings
                     completedGcodePath = null
@@ -338,13 +373,14 @@ fun LydSliceApp() {
                 },
                 onSaveProfile = { name ->
                     val index = customProfiles.indexOfFirst { it.name.equals(name, ignoreCase = true) }
-                    val profile = PrintProfile(name.trim(), settings)
+                    val profile = if (index >= 0) customProfiles[index].copy(name = name.trim(), settings = settings)
+                        else PrintProfile(name.trim(), settings)
                     if (index >= 0) customProfiles[index] = profile else customProfiles.add(profile)
-                    PrintProfileStore.saveCustom(context, customProfiles.toList())
+                    PrintProfileStore.saveCustom(context, activePrinter.id, customProfiles.toList())
                 },
                 onDeleteProfile = {
                     customProfiles.remove(it)
-                    PrintProfileStore.saveCustom(context, customProfiles.toList())
+                    PrintProfileStore.saveCustom(context, activePrinter.id, customProfiles.toList())
                 }
             )
             AppTab.Printer -> PrinterScreen(
@@ -353,6 +389,8 @@ fun LydSliceApp() {
                 profiles = builtInPrinterProfiles + customPrinterProfiles,
                 onSelectProfile = {
                     activePrinter = it
+                    customProfiles.clear()
+                    customProfiles.addAll(PrintProfileStore.loadCustom(context, it.id))
                     platePreviewFile = null
                     completedGcodePath = null
                     sliceDetails = ""
@@ -424,6 +462,7 @@ private fun WorkspaceScreen(
     gcodePreviewFile: File?,
     onImport: () -> Unit,
     onRemove: (ModelPlacement) -> Unit,
+    onModelChange: (ModelPlacement) -> Unit,
     printer: PrinterProfile,
     isSlicing: Boolean,
     arranging: Boolean,
@@ -438,6 +477,12 @@ private fun WorkspaceScreen(
     onExport: () -> Unit
 ) {
     var previewProgress by remember(gcodePreviewFile) { mutableStateOf(1f) }
+    var editingModel by remember { mutableStateOf<ModelPlacement?>(null) }
+    if (editingModel != null) {
+        ModelTransformDialog(model = editingModel!!, printer = printer,
+            onDismiss = { editingModel = null },
+            onApply = { changed -> onModelChange(changed); editingModel = null })
+    }
     Column(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -540,6 +585,9 @@ private fun WorkspaceScreen(
                             verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.ViewInAr, contentDescription = null)
                             Text(model.displayName, Modifier.weight(1f).padding(start = 10.dp), maxLines = 1)
+                            IconButton(onClick = { editingModel = model }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Move or rotate model")
+                            }
                             IconButton(onClick = { onRemove(model) }) {
                                 Icon(Icons.Default.Delete, contentDescription = "Remove model")
                             }
@@ -558,6 +606,8 @@ private fun SettingsScreen(
     printer: PrinterProfile,
     onSettingsChange: (PrintSettings) -> Unit,
     profiles: List<PrintProfile>,
+    printerProfiles: List<PrinterProfile>,
+    onCopyProfile: (PrintProfile, String) -> Unit,
     onApplyProfile: (PrintProfile) -> Unit,
     onSaveProfile: (String) -> Unit,
     onDeleteProfile: (PrintProfile) -> Unit
@@ -565,8 +615,41 @@ private fun SettingsScreen(
     var showProfileMenu by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
     var profileName by remember { mutableStateOf("") }
+    var copyingProfile by remember { mutableStateOf<PrintProfile?>(null) }
+    var copyTargetId by remember(printer.id) { mutableStateOf(printerProfiles.firstOrNull { it.id != printer.id }?.id.orEmpty()) }
+    var showCopyTargets by remember { mutableStateOf(false) }
     val warning = settingsWarning(settings, printer)
 
+    if (copyingProfile != null) {
+        AlertDialog(
+            onDismissRequest = { copyingProfile = null },
+            title = { Text("Copy print profile") },
+            text = {
+                Column {
+                    Text("Copy ${copyingProfile!!.name} to another printer. The original remains with ${printer.name}.")
+                    Box {
+                        OutlinedButton(onClick = { showCopyTargets = true },
+                            enabled = printerProfiles.any { it.id != printer.id }) {
+                            Text(printerProfiles.firstOrNull { it.id == copyTargetId }?.name ?: "Choose printer")
+                        }
+                        androidx.compose.material3.DropdownMenu(showCopyTargets, { showCopyTargets = false }) {
+                            printerProfiles.filter { it.id != printer.id }.forEach { target ->
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text(target.name) },
+                                    onClick = { copyTargetId = target.id; showCopyTargets = false }
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { onCopyProfile(copyingProfile!!, copyTargetId); copyingProfile = null },
+                    enabled = copyTargetId.isNotBlank()) { Text("Copy") }
+            },
+            dismissButton = { OutlinedButton(onClick = { copyingProfile = null }) { Text("Cancel") } }
+        )
+    }
     if (showSaveDialog) {
         AlertDialog(
             onDismissRequest = { showSaveDialog = false },
@@ -593,7 +676,7 @@ private fun SettingsScreen(
     ) {
         item {
             Text("Print profiles", style = MaterialTheme.typography.headlineSmall)
-            Text("Choose a starting point or save your own tuned settings.",
+            Text("Profiles saved here belong to ${printer.name}. Switching printers shows that printer's own saved profiles.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Box {
                 OutlinedButton(onClick = { showProfileMenu = true }) {
@@ -781,9 +864,15 @@ private fun SettingsScreen(
             }
         }
         items(profiles.filterNot { it.isBuiltIn }) { profile ->
-            OutlinedButton(onClick = { onDeleteProfile(profile) }) {
-                Icon(Icons.Default.Delete, contentDescription = null)
-                Text(" Delete saved profile: ${profile.name}")
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedButton(onClick = { copyingProfile = profile }, modifier = Modifier.weight(1f),
+                    enabled = printerProfiles.any { it.id != printer.id }) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Text(" Copy ${profile.name} to another printer")
+                }
+                IconButton(onClick = { onDeleteProfile(profile) }) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete print profile")
+                }
             }
         }
     }
