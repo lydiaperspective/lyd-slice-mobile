@@ -15,9 +15,11 @@
 - Persist imported files in app-managed storage
 - [x] Add an interactive 3D viewport with orbit, pan and zoom
 - Add model selection and touch gizmos
-- Support per-model translation and rotation
-- Validate model placement against the build volume
-- Implement collision-aware auto-arrangement with a selectable objective
+- [x] Support per-model XY placement and Z rotation in the plate composition data path
+- [x] Validate model placement against the configured build volume
+- [x] Implement deterministic shelf-based auto-arrangement with spacing and fit checks
+- [ ] Add interactive touch gizmos and manual move/rotate controls
+- [ ] Add collision-aware placement editing and alternate arrangement objectives
 
 ## Phase 2 — Printer and material profiles
 - Confirm the exact R1 Plus build volume and firmware-specific limits
@@ -29,10 +31,11 @@
 - [x] Evaluate and select an Android-packaged OrcaSlicer-derived native engine
 - [x] Define an engine adapter and typed slice request/result
 - [x] Integrate the checksum-pinned ARM64 native engine and JNI ABI
-- [x] Generate G-code from a single STL and the current printer/print settings
+- [x] Generate G-code from multiple STL files composed into one plate mesh and the current printer/print settings
 - [x] Add an interactive G-code toolpath preview
 - [x] Add the UI workflow for progress reporting, completion/failure feedback, engine warnings, time/material estimates, and G-code export
-- Add cancellation and multi-model plate composition/arrangement
+- [x] Add multi-model plate composition and automatic arrangement
+- [ ] Add cancellation and slicer job interruption
 - [ ] Verify the R1 Plus profile, start/end G-code and generated output against known-good test prints before printing
 
 ## Phase 4 — OctoPrint
