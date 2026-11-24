@@ -192,7 +192,9 @@ object StlPlateComposer {
                 val cx = (mesh.bounds.minX + mesh.bounds.maxX) / 2.0
                 val cy = (mesh.bounds.minY + mesh.bounds.maxY) / 2.0
                 val cz = (mesh.bounds.minZ + mesh.bounds.maxZ) / 2.0
-                for (offset in mesh.vertices.indices step 9) {
+                val triangleCount = mesh.vertices.size / 9
+                val sampleStride = max(1, triangleCount / 50_000)
+                for (offset in 0 until mesh.vertices.size step (9 * sampleStride)) {
                     val p = (0..2).map { vertex ->
                         rotate(mesh.vertices[offset + vertex * 3].toDouble() - cx,
                             mesh.vertices[offset + vertex * 3 + 1].toDouble() - cy,
@@ -203,7 +205,7 @@ object StlPlateComposer {
                     val nx = ay * bz - az * by; val ny = az * bx - ax * bz; val nz = ax * by - ay * bx
                     val twiceArea = sqrt(nx * nx + ny * ny + nz * nz)
                     if (p.all { it[2] <= bounds.minZ + 0.05 } && twiceArea > 1e-9 &&
-                        kotlin.math.abs(nz) >= twiceArea * 0.995) contact += twiceArea / 2.0
+                        kotlin.math.abs(nz) >= twiceArea * 0.995) contact += (twiceArea / 2.0) * sampleStride
                 }
                 Orientation(rx, ry, bounds, contact)
             }
