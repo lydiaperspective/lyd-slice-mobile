@@ -229,13 +229,18 @@ fun LydSliceApp() {
                         completedGcodePath = null
                         sliceMessage = "Model placement changed. Slice again to update G-code."
                         scope.launch {
-                            runCatching {
+                            val result = runCatching {
                                 withContext(Dispatchers.IO) {
                                     StlPlateComposer.compose(context, models.toList(), activePrinter,
                                         File(context.cacheDir, "plate-preview.stl"))
                                 }
-                            }.onFailure { sliceError = it.message ?: "Could not update the plate preview." }
-                            platePreviewFile = File(context.cacheDir, "plate-preview.stl").takeIf { it.isFile }
+                            }
+                            result.onSuccess {
+                                platePreviewFile = it
+                                sliceError = null
+                            }.onFailure {
+                                sliceError = it.message ?: "Could not update the plate preview."
+                            }
                         }
                     }
                 },
