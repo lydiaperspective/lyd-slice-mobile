@@ -425,69 +425,54 @@ fun ModelViewer(
     val modelObjectTransformsKey = modelObjects.map { model -> model.objectId to model.transform }
     val legacyModelFile = viewerLegacyModelFile(modelFile, modelObjects)
 
-    LaunchedEffect(viewerReady, legacyModelFile, modelObjectFilesKey) {
+    LaunchedEffect(viewerReady, legacyModelFile, modelObjectFilesKey, gcodeFile) {
         resources.modelFile.set(legacyModelFile)
+        resources.gcodeFile.set(gcodeFile)
         resources.objectFiles.set(
             modelObjects.mapIndexed { index, model -> "objects/$index.stl" to model.file }.toMap(),
         )
         if (!viewerReady) return@LaunchedEffect
 
+        val objects = JSONArray()
         if (modelObjects.isNotEmpty()) {
             val objectIds = modelObjects.map { it.objectId }
             if (objectIds.any { it.isBlank() } || objectIds.distinct().size != objectIds.size) {
                 currentOnError("Viewer model objectId values must be non-empty and unique")
                 return@LaunchedEffect
             }
-            val objects = JSONArray()
             modelObjects.forEachIndexed { index, model ->
                 objects.put(
                     JSONObject()
                         .put("objectId", model.objectId)
                         .put("url", "../../model/objects/$index.stl")
                         .put("visible", model.visible)
-                        .put(
-                            "transform",
-                            model.transform.toViewerJson(),
-                        ),
+                        .put("transform", model.transform.toViewerJson()),
                 )
             }
-            val payload = JSONObject()
-                .put("version", System.nanoTime().toString())
-                .put("objects", objects)
-                .put("selectedObjectId", selectedObjectId ?: JSONObject.NULL)
-                .put("frameAll", true)
-            webView?.evaluateJavascript(
-                "window.FeresaSlicerViewer.loadModels($payload)",
-                null,
-            )
         } else if (legacyModelFile != null) {
-            webView?.evaluateJavascript(
-                "window.FeresaSlicerViewer.loadModel(${System.nanoTime()})",
-                null,
-            )
-        } else {
-            val payload = JSONObject()
-                .put("version", System.nanoTime().toString())
-                .put("objects", JSONArray())
-                .put("selectedObjectId", JSONObject.NULL)
-                .put("frameAll", true)
-            webView?.evaluateJavascript(
-                "window.FeresaSlicerViewer.loadModels($payload)",
-                null,
+            objects.put(
+                JSONObject()
+                    .put("objectId", "current")
+                    .put("url", "../../model/current.stl")
+                    .put("visible", true)
+                    .put("transform", transform.toViewerJson()),
             )
         }
-    }
 
-    LaunchedEffect(viewerReady, gcodeFile) {
-        resources.gcodeFile.set(gcodeFile)
-        if (viewerReady) {
-            val script = if (gcodeFile != null) {
-                "window.FeresaSlicerViewer.loadToolpath(${System.nanoTime()})"
-            } else {
-                "window.FeresaSlicerViewer.clearToolpath()"
-            }
-            webView?.evaluateJavascript(script, null)
+        val payload = JSONObject()
+            .put("version", System.nanoTime().toString())
+            .put("objects", objects)
+            .put("selectedObjectId", selectedObjectId ?: if (legacyModelFile != null) "current" else JSONObject.NULL)
+            .put("frameAll", true)
+        val gcodeTimestamp = if (gcodeFile != null) {
+            JSONObject.quote(System.nanoTime().toString())
+        } else {
+            "null"
         }
+        webView?.evaluateJavascript(
+            "window.FeresaSlicerViewer.loadScene($payload,$gcodeTimestamp)",
+            null,
+        )
     }
 
     LaunchedEffect(viewerReady, transform, modelObjectTransformsKey) {
