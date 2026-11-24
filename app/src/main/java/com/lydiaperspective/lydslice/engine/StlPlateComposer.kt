@@ -44,32 +44,42 @@ object StlPlateComposer {
         var rowDepth = 0.0
         for (index in models.indices) {
             val mesh = meshes[index]
-            require(mesh.bounds.width <= bedW && mesh.bounds.depth <= bedD) {
-                "${models[index].displayName} is larger than the configured build plate."
+            val orientations = listOf(
+                Triple(0f, mesh.bounds.width, mesh.bounds.depth),
+                Triple(90f, mesh.bounds.depth, mesh.bounds.width)
+            )
+            var orientation = orientations.firstOrNull { (_, width, depth) ->
+                cursorX + width + SPACING_MM <= bedW &&
+                    cursorY + depth + SPACING_MM <= bedD
             }
-            if (cursorX + mesh.bounds.width + SPACING_MM > bedW) {
+            if (orientation == null) {
                 cursorX = SPACING_MM
                 cursorY += rowDepth + SPACING_MM
                 rowDepth = 0.0
+                orientation = orientations.firstOrNull { (_, width, depth) ->
+                    cursorX + width + SPACING_MM <= bedW &&
+                        cursorY + depth + SPACING_MM <= bedD
+                }
             }
-            require(cursorY + mesh.bounds.depth + SPACING_MM <= bedD) {
-                "The models do not fit on this build plate with ${SPACING_MM.toInt()} mm spacing. Remove a model or use a larger printer profile."
+            require(orientation != null) {
+                "${models[index].displayName} does not fit on the remaining build plate, even when rotated 90°. Remove a model or use a larger printer profile."
             }
-            val centerX = cursorX + mesh.bounds.width / 2.0
-            val centerY = cursorY + mesh.bounds.depth / 2.0
+            val (rotation, width, depth) = orientation
+            val centerX = cursorX + width / 2.0
+            val centerY = cursorY + depth / 2.0
             val printerX = if (printer.originAtCenter) centerX - bedW / 2.0 else centerX
             val printerY = if (printer.originAtCenter) centerY - bedD / 2.0 else centerY
             packed += models[index].copy(
                 xMm = printerX.toFloat(),
                 yMm = printerY.toFloat(),
                 zMm = 0f,
-                rotationZDegrees = 0f,
-                sizeXmm = mesh.bounds.width.toFloat(),
-                sizeYmm = mesh.bounds.depth.toFloat(),
+                rotationZDegrees = rotation,
+                sizeXmm = width.toFloat(),
+                sizeYmm = depth.toFloat(),
                 sizeZmm = mesh.bounds.height.toFloat()
             )
-            cursorX += mesh.bounds.width + SPACING_MM
-            rowDepth = max(rowDepth, mesh.bounds.depth)
+            cursorX += width + SPACING_MM
+            rowDepth = max(rowDepth, depth)
         }
         return packed
     }
