@@ -4,7 +4,7 @@ Native Android 3D-print preparation app for importing STL models, arranging a bu
 
 ## Current status
 
-The app now integrates an ARM64 OrcaSlicer-derived native engine for local STL slicing, with an interactive 3D model view and G-code toolpath preview. This is an early integration: the current adapter slices one STL per job, and Robo 3D R1 Plus machine limits and start/end G-code still require verification before printing.
+The app now integrates an ARM64 OrcaSlicer-derived native engine for local STL slicing, with an interactive 3D model view and G-code toolpath preview. This is an early integration: multiple STL files can be arranged and composed into one plate job, while interactive manual positioning and Robo 3D R1 Plus machine limits/start-end G-code still require further verification.
 
 ## Target hardware
 
@@ -46,7 +46,10 @@ See [docs/PRINTER-SETTINGS.md](docs/PRINTER-SETTINGS.md) for the Cura-inspired s
 - The app uses the pinned OrcaSlicer Mobile `libslic3r` ARM64 native engine through its JNI ABI.
 - Android builds fetch a checksum-verified engine archive from the Feresa Slicer project during `preBuild`; the native binaries are not committed to this repository.
 - The Workspace includes an interactive 3D STL preview and switches to a layer/toolpath preview after slicing.
-- The current adapter accepts one STL per slice. Multi-model plate composition and transforms are not yet connected to the native request.
+- Multiple STL files are parsed and composed into a single binary STL plate before native slicing. Binary and ASCII STL input are supported.
+- Auto-arrange uses a deterministic shelf-packing layout with 3 mm spacing, checks the configured rectangular build volume, and updates the plate preview.
+- The plate composer supports stored XY centre positions, Z rotation and Z offset; interactive touch controls for those transforms are still pending.
+- The composer currently limits a plate to 100 models and 2 million triangles total. Circular/custom build plates are not supported by auto-arrange.
 - The native engine currently targets `arm64-v8a` and Android API 28+.
 - G-code output is local and can be exported through Android's Save File picker.
 - Slicing performs preflight checks for supported rectangular beds, positive machine dimensions, nozzle/filament values, temperature ceilings, layer height, and speed/infill ranges.
