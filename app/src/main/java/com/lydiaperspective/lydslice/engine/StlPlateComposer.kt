@@ -19,7 +19,7 @@ import kotlin.math.sin
  * Placement xMm/yMm represent each model's XY centre in printer coordinates.
  */
 object StlPlateComposer {
-    private const val MAX_TRIANGLES = 2_000_000
+    private const val MAX_TRIANGLES = 500_000
     private const val SPACING_MM = 3.0
 
     private data class Mesh(val vertices: FloatArray, val bounds: Bounds)
@@ -82,11 +82,16 @@ object StlPlateComposer {
     ): File {
         require(models.isNotEmpty()) { "No models were supplied for plate composition." }
         require(models.size <= 100) { "A single plate is limited to 100 imported models." }
-        val all = models.map { model -> model to readMesh(openModel(context, model)) }
-        val totalTriangles = all.sumOf { it.second.vertices.size / 9 }
-        require(totalTriangles in 1..MAX_TRIANGLES) {
-            "The combined plate exceeds the supported triangle limit of $MAX_TRIANGLES."
+        var totalTriangles = 0
+        val all = models.map { model ->
+            val mesh = readMesh(openModel(context, model))
+            totalTriangles += mesh.vertices.size / 9
+            require(totalTriangles <= MAX_TRIANGLES) {
+                "The combined plate exceeds the supported triangle limit of $MAX_TRIANGLES."
+            }
+            model to mesh
         }
+        require(totalTriangles > 0) { "The combined plate contains no triangles." }
         val plateMinX = if (printer.originAtCenter) -printer.bedWidthMm / 2.0 else 0.0
         val plateMinY = if (printer.originAtCenter) -printer.bedDepthMm / 2.0 else 0.0
         val plateMaxX = plateMinX + printer.bedWidthMm
@@ -116,9 +121,15 @@ object StlPlateComposer {
                     minZ = min(minZ, z)
                     maxZ = max(maxZ, z)
                 }
-                require(transformed.filterIndexed { i, _ -> i % 3 == 0 }.all { it >= plateMinX - 0.01 && it <= plateMaxX + 0.01 } &&
-                    transformed.filterIndexed { i, _ -> i % 3 == 1 }.all { it >= plateMinY - 0.01 && it <= plateMaxY + 0.01 } &&
-                    minZ >= plateMinZ - 0.01 && maxZ <= printer.buildHeightMm + 0.01) {
+                var insideXY = true
+                for (vertex in 0 until 3) {
+                    val x = transformed[vertex * 3]
+                    val y = transformed[vertex * 3 + 1]
+                    if (x < plateMinX - 0.01 || x > plateMaxX + 0.01 ||
+                        y < plateMinY - 0.01 || y > plateMaxY + 0.01) insideXY = false
+                }
+                require(insideXY && minZ >= plateMinZ - 0.01 &&
+                    maxZ <= printer.buildHeightMm + 0.01) {
                     "Model '${placement.displayName}' is outside the configured build volume. Use Auto arrange or adjust its placement."
                 }
                 val ax = transformed[3] - transformed[0]
@@ -158,7 +169,7 @@ object StlPlateComposer {
     }
 
     private fun readMesh(file: File): Mesh {
-        require(file.length() <= 250L * 1024L * 1024L) { "STL file is larger than the 250 MB safety limit." }
+        require(file.length() <= 64L * 1024L * 1024L) { "STL file is larger than the 64 MB safety limit." }
         RandomAccessFile(file, "r").use { input ->
             val header = ByteArray(84)
             input.readFully(header)
