@@ -148,6 +148,8 @@ fun LydSliceApp() {
             }
         }
         if (uris.isNotEmpty()) {
+            platePreviewFile = null
+            sliceError = null
             completedGcodePath = null
             sliceWarnings = emptyList()
             sliceDetails = ""
@@ -229,6 +231,7 @@ fun LydSliceApp() {
                 onAutoArrange = {
                     if (models.isNotEmpty()) scope.launch {
                         arranging = true
+                        platePreviewFile = null
                         completedGcodePath = null
                         sliceError = null
                         sliceMessage = "Arranging build plate…"
@@ -350,6 +353,7 @@ fun LydSliceApp() {
                 profiles = builtInPrinterProfiles + customPrinterProfiles,
                 onSelectProfile = {
                     activePrinter = it
+                    platePreviewFile = null
                     completedGcodePath = null
                     sliceDetails = ""
                     sliceMessage = "Printer changed. Slice again to update G-code."
@@ -362,6 +366,7 @@ fun LydSliceApp() {
                         isBuiltIn = false
                     ) else edited.copy(isBuiltIn = false)
                     activePrinter = updated
+                    platePreviewFile = null
                     completedGcodePath = null
                     sliceDetails = ""
                     sliceMessage = "Printer configuration changed. Slice again to update G-code."
@@ -377,6 +382,7 @@ fun LydSliceApp() {
                     sliceMessage = "Printer changed. Slice again to update G-code."
                     customPrinterProfiles.add(created)
                     activePrinter = created
+                    platePreviewFile = null
                     PrinterProfileStore.saveCustom(context, customPrinterProfiles.toList())
                     PrinterProfileStore.saveSelectedId(context, created.id)
                 },
