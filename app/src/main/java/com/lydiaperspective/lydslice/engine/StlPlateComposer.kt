@@ -61,10 +61,10 @@ object StlPlateComposer {
                         cursorY + depth + SPACING_MM <= bedD
                 }
             }
-            require(orientation != null) {
+            val selectedOrientation = orientation ?: error(
                 "${models[index].displayName} does not fit on the remaining build plate, even when rotated 90°. Remove a model or use a larger printer profile."
-            }
-            val (rotation, width, depth) = orientation
+            )
+            val (rotation, width, depth) = selectedOrientation
             val centerX = cursorX + width / 2.0
             val centerY = cursorY + depth / 2.0
             val printerX = if (printer.originAtCenter) centerX - bedW / 2.0 else centerX
