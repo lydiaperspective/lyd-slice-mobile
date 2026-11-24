@@ -8,9 +8,11 @@ The Printer tab uses a machine-profile model inspired by UltiMaker Cura's machin
 - Selecting a built-in profile fills the active machine configuration.
 - Editing any value on a built-in profile creates a separate custom copy. The built-in remains unchanged.
 - Custom printer profiles are saved locally on the Android device and the selected printer is restored on the next launch.
+- User-created printer profiles can be deleted after a confirmation prompt; deleting one also removes its printer-scoped custom print profiles. Built-in printer profiles cannot be deleted.
 - Custom print profiles are scoped to the selected printer profile ID. Switching printers shows a separate set of saved print profiles.
 - Built-in print presets remain shared read-only starting points; user-created print profiles belong to one printer.
 - Users can copy a custom print profile to another printer. Copying creates an independent profile and leaves the original unchanged.
+- User-created print profiles can be deleted after a confirmation prompt; built-in print presets cannot be deleted.
 - Existing custom print profiles from the older app version are migrated to the printer selected the first time the new version loads them.
 
 ## Included presets
@@ -50,15 +52,15 @@ The editor currently exposes:
 - Printhead clearance toward X/Y minimum and maximum
 - Gantry height
 - Machine start and end G-code
-- Optional post-levelling nozzle purge / wipe G-code (user-supplied; no wipe coordinates are assumed)
+- Optional post-levelling nozzle purge / wipe G-code (the R1 Plus preset includes a configurable front-edge purge line; other printers start blank)
 
-When the selected printer has no heated bed, the print-settings screen hides the bed-temperature control. Printer temperature ceilings also bound the corresponding print-setting controls. The optional nozzle-preparation script is appended after the machine start script, so on the R1 Plus it runs after G28/G29 and the configured extrusion reset.
+When the selected printer has no heated bed, the print-settings screen hides the bed-temperature control. Printer temperature ceilings also bound the corresponding print-setting controls. The optional nozzle-preparation script is appended after the machine start script, so on the R1 Plus it runs after G28/G29 and the configured extrusion reset. The R1 Plus default uses a short purge line from X5 to X80 at Y5; verify that this path is over the actual usable bed and clear of clips or other obstructions.
 
 ## Bed adhesion and first-layer controls
 
 The print-settings screen exposes OrcaSlicer-backed adhesion choices: none, skirt, brim, and raft. Brim width, raft layer count, and skirt loop count are configured independently. First-layer tuning includes outer-wall speed, infill speed, flow ratio, and the number of initial layers for which the part-cooling fan is kept off; the normal fan setting applies after those layers. The existing first-layer speed control remains available.
 
-For the R1 Plus, the built-in start script retains G28 followed by G29. This performs firmware homing and automatic bed levelling before the optional nozzle-preparation script and print. G29 is not a substitute for a clean bed, correct probe offset, or a clean nozzle. The app does not assume a physical nozzle brush or a safe purge-line location. Only configure purge/wipe moves after verifying the actual coordinates and clearance on the individual printer. Inspect the exported G-code before printing, especially after changing start scripts.
+For the R1 Plus, the built-in start script retains G28 followed by G29. This performs firmware homing and automatic bed levelling before the optional nozzle-preparation script and print. G29 is not a substitute for a clean bed, correct probe offset, or a clean nozzle. The app does not assume a physical nozzle brush. The R1 Plus purge-line coordinates are a provisional front-edge path, not a verified fit for every bed protector or modified machine. Confirm the path's actual coordinates and clearance on the individual printer, and edit the nozzle-preparation script if needed. Inspect the exported G-code before printing, especially after changing start scripts.
 
 First-layer flow is a fine-tuning control, not a fix for incorrect Z-probe offset, dirty build surface, or damaged/uneven bed covering. Start near 100% and adjust in small steps based on a test print. Follow the filament manufacturer's temperature guidance; a brim or raft cannot compensate for poor surface preparation.
 
