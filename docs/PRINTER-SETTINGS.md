@@ -47,8 +47,17 @@ The editor currently exposes:
 - Printhead clearance toward X/Y minimum and maximum
 - Gantry height
 - Machine start and end G-code
+- Optional post-levelling nozzle purge / wipe G-code (user-supplied; no wipe coordinates are assumed)
 
-When the selected printer has no heated bed, the print-settings screen hides the bed-temperature control. Printer temperature ceilings also bound the corresponding print-setting controls.
+When the selected printer has no heated bed, the print-settings screen hides the bed-temperature control. Printer temperature ceilings also bound the corresponding print-setting controls. The optional nozzle-preparation script is appended after the machine start script, so on the R1 Plus it runs after G28/G29 and the configured extrusion reset.
+
+## Bed adhesion and first-layer controls
+
+The print-settings screen exposes OrcaSlicer-backed adhesion choices: none, skirt, brim, and raft. Brim width, raft layer count, and skirt loop count are configured independently. First-layer tuning includes outer-wall speed, infill speed, flow ratio, and the number of initial layers for which the part-cooling fan is kept off; the normal fan setting applies after those layers. The existing first-layer speed control remains available.
+
+For the R1 Plus, the built-in start script retains G28 followed by G29. This performs firmware homing and automatic bed levelling before the optional nozzle-preparation script and print. G29 is not a substitute for a clean bed, correct probe offset, or a clean nozzle. The app does not assume a physical nozzle brush or a safe purge-line location. Only configure purge/wipe moves after verifying the actual coordinates and clearance on the individual printer. Inspect the exported G-code before printing, especially after changing start scripts.
+
+First-layer flow is a fine-tuning control, not a fix for incorrect Z-probe offset, dirty build surface, or damaged/uneven bed covering. Start near 100% and adjust in small steps based on a test print. Follow the filament manufacturer's temperature guidance; a brim or raft cannot compensate for poor surface preparation.
 
 ## Cura reference
 
