@@ -13,8 +13,8 @@ object PrinterProfileStore {
         PrinterProfile(
             id = "robo3d-r1-plus",
             name = "Robo 3D R1 Plus",
-            // Marlin's published Robo3D R1+ machine profile lists 240 × 254 × 240 mm.
-            // Treat these as nominal firmware coordinates; verify usable travel on the physical unit.
+            // ctkjose/R1PLUSFIRMWARE config.h sets axis travel to 240 × 254 × 240 mm.
+            // XY values are a provisional slicer envelope until the protector footprint is measured.
             bedWidthMm = 240f,
             bedDepthMm = 254f,
             buildHeightMm = 240f,
