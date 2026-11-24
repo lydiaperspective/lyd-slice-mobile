@@ -2,13 +2,17 @@
 
 ## Hardware facts and confidence
 
-The manufacturer FAQ describes the R1+ as a single-extruder printer using 1.75 mm filament and supporting PLA, ABS and specialty materials. Retailer specifications describe a Hexagon all-metal hot end rated up to 290°C, a heated glass bed, and a 9-point automatic leveling routine. These are published product specifications; an individual machine may have been modified or serviced since manufacture.
+The R1+ is a single-extruder printer with a heated bed. Robo's support guidance gives PLA temperatures of 190–210°C at the nozzle and 50–70°C at the bed, and ABS temperatures of 230–250°C at the nozzle and 80–100°C at the bed. Published R1+ hardware specifications describe a 0.4 mm nozzle, 1.75 mm filament and a hot-end ceiling of 290°C; the 290°C value is a hardware limit, not a recommended print temperature.
 
-Robo's FAQ describes 100–300 micron as its normal resolution range and says it has printed at 50 microns with significantly longer print times. The R1 Plus manual describes 0.2 mm as a default layer height, with 0.1 mm and 0.3 mm options.
+Marlin's published R1+ machine entry identifies a Cartesian machine with one extruder, a RAMPS 1.4 EFB board and a nominal build volume of 240 × 254 × 240 mm. The app now uses those dimensions rather than the earlier provisional 220 × 220 × 250 mm values. This is a firmware reference, not proof that every used machine has the same unobstructed travel: clips, bed changes, endstop positions, replacement firmware and other modifications can reduce or alter usable space.
 
-The current app build-volume values (220 × 220 × 250 mm) are provisional and must not be treated as confirmed usable dimensions. Verify the exact machine, origin, clips, nozzle clearance and firmware configuration before real slicing.
+Robo's MatterControl support guidance explicitly says R1 and R1+ use firmware bed leveling and instructs users to place G29 after the other start-G-code lines. The preset therefore homes with G28 and runs G29. Robo's Z-offset article says the R1+ offset is adjusted through its controls/macros and distinguishes it from the older R1; the app deliberately does not inject an M565 offset.
 
 ## Built-in starting profiles
+
+The built-in R1+ machine profile now starts with G21, G90, M83, temperature set/wait commands using OrcaSlicer's initial-layer placeholders, G28, G29, and G92 E0. Its end script turns off the hot end, heated bed and part fan, then disables the motors. The slicer is explicitly configured for relative E distances to match M83.
+
+These scripts are a conservative baseline based on Robo's documented firmware-level leveling workflow and OrcaSlicer's Marlin/relative-extrusion conventions. The exact firmware revision and any owner modifications on an individual printer are not known; inspect the exported G-code and verify the printer's firmware behavior before printing.
 
 These are cautious starting presets for experimentation, not official factory profiles and not guaranteed recipes. The nozzle and bed temperature bands come from Robo's R1+ temperature guidance. Speeds and quality combinations are conservative app defaults informed by the manual's 0.2 mm default and the documented trade-off between layer height, print time and detail.
 
@@ -42,20 +46,23 @@ These are advisory warnings. Filament manufacturers' instructions and the condit
 
 Confirm from the specific printer/firmware configuration:
 
-- Usable X/Y/Z build volume and origin convention
+- Actual usable X/Y/Z travel and origin convention (the app's 240 × 254 × 240 mm values come from Marlin's R1+ reference configuration)
 - Nozzle diameter and filament diameter
 - Heated-bed availability and temperature limits
 - Hotend temperature limits
 - Maximum feed rates, acceleration and jerk settings
 - Firmware flavor and supported G-code commands
-- Start G-code, end G-code, homing and bed-leveling behavior
+- Start G-code, end G-code, homing and bed-leveling behavior (the preset uses G28 followed by G29, as documented for R1+)
 - Whether the printer has been modified (hot end, fans, extruder, bed, firmware)
 
 Do not assume all R1 Plus machines have identical firmware or modifications. Keep machine limits and start/end G-code editable per printer profile.
 
 ## Sources
 
+- Marlin Firmware, [Robo3D R1+ machine reference](https://marlinfw.org/docs/appendix/printers/robo3d.html)
+- MatterHackers, [Using firmware leveling with Robo R1/R1+](https://help.matterhackers.com/article/62-i-updated-mattercontrol-and-now-i-cant-see-software-print-leveling-in-the-options-menu)
 - Robo Help Center, [Adjusting temperatures](https://help.robo3d.com/hc/en-us/articles/115001254531-Adjusting-temperatures)
+- Robo Help Center, [Z-axis endstop and R1+ Z-offset guidance](https://help.robo3d.com/hc/en-us/articles/115000724052-Z-Axis-endstop-fix)
 - Robo Help Center, [Troubleshooting](https://support-site.readthedocs.io/en/master/R1Plus/troubleshooting/)
 - Robo Help Center, [Speed settings](https://help.robo3d.com/hc/en-us/articles/115000716631-Speed)
 - ROBO 3D, [FAQ](https://robo3d.com/pages/learn-faq)
