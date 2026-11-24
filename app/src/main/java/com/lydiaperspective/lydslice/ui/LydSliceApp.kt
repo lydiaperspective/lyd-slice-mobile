@@ -434,6 +434,7 @@ fun LydSliceApp() {
                     PrinterProfileStore.saveSelectedId(context, created.id)
                 },
                 onDeleteCustom = {
+                    PrintProfileStore.deleteForPrinter(context, it.id)
                     customPrinterProfiles.remove(it)
                     PrinterProfileStore.saveCustom(context, customPrinterProfiles.toList())
                     if (activePrinter.id == it.id) {
@@ -487,6 +488,18 @@ private fun WorkspaceScreen(
 ) {
     var previewProgress by remember(gcodePreviewFile) { mutableStateOf(1f) }
     var editingModel by remember { mutableStateOf<ModelPlacement?>(null) }
+    var pendingRemoval by remember { mutableStateOf<ModelPlacement?>(null) }
+    if (pendingRemoval != null) {
+        AlertDialog(
+            onDismissRequest = { pendingRemoval = null },
+            title = { Text("Remove model?") },
+            text = { Text("Remove ${pendingRemoval!!.displayName} from this build plate? The imported file will also be removed from this app's local model cache.") },
+            confirmButton = {
+                Button(onClick = { pendingRemoval?.let(onRemove); pendingRemoval = null }) { Text("Remove") }
+            },
+            dismissButton = { OutlinedButton(onClick = { pendingRemoval = null }) { Text("Cancel") } }
+        )
+    }
     if (editingModel != null) {
         ModelTransformDialog(model = editingModel!!, printer = printer,
             onDismiss = { editingModel = null },
@@ -599,7 +612,7 @@ private fun WorkspaceScreen(
                             IconButton(onClick = { editingModel = model }) {
                                 Icon(Icons.Default.Edit, contentDescription = "Move or rotate model")
                             }
-                            IconButton(onClick = { onRemove(model) }) {
+                            IconButton(onClick = { pendingRemoval = model }) {
                                 Icon(Icons.Default.Delete, contentDescription = "Remove model")
                             }
                         }
@@ -677,10 +690,22 @@ private fun SettingsScreen(
     var showSaveDialog by remember { mutableStateOf(false) }
     var profileName by remember { mutableStateOf("") }
     var copyingProfile by remember { mutableStateOf<PrintProfile?>(null) }
+    var pendingDeleteProfile by remember { mutableStateOf<PrintProfile?>(null) }
     var copyTargetId by remember(printer.id) { mutableStateOf(printerProfiles.firstOrNull { it.id != printer.id }?.id.orEmpty()) }
     var showCopyTargets by remember { mutableStateOf(false) }
     val warning = settingsWarning(settings, printer)
 
+    if (pendingDeleteProfile != null) {
+        AlertDialog(
+            onDismissRequest = { pendingDeleteProfile = null },
+            title = { Text("Delete print profile?") },
+            text = { Text("Delete the custom print profile '${pendingDeleteProfile!!.name}' from ${printer.name}? This cannot be undone.") },
+            confirmButton = {
+                Button(onClick = { pendingDeleteProfile?.let(onDeleteProfile); pendingDeleteProfile = null }) { Text("Delete") }
+            },
+            dismissButton = { OutlinedButton(onClick = { pendingDeleteProfile = null }) { Text("Cancel") } }
+        )
+    }
     if (copyingProfile != null) {
         AlertDialog(
             onDismissRequest = { copyingProfile = null },
@@ -931,7 +956,7 @@ private fun SettingsScreen(
                     Icon(Icons.Default.Add, contentDescription = null)
                     Text(" Copy ${profile.name} to another printer")
                 }
-                IconButton(onClick = { onDeleteProfile(profile) }) {
+                IconButton(onClick = { pendingDeleteProfile = profile }) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete print profile")
                 }
             }
@@ -1003,6 +1028,18 @@ private fun PrinterScreen(
     var shapeMenu by remember { mutableStateOf(false) }
     var flavorMenu by remember { mutableStateOf(false) }
     var nozzleMenu by remember { mutableStateOf(false) }
+    var confirmDeletePrinter by remember { mutableStateOf(false) }
+    if (confirmDeletePrinter) {
+        AlertDialog(
+            onDismissRequest = { confirmDeletePrinter = false },
+            title = { Text("Delete printer profile?") },
+            text = { Text("Delete '${profile.name}' and its saved custom print profiles? This cannot be undone. Built-in printer presets cannot be deleted.") },
+            confirmButton = {
+                Button(onClick = { onDeleteCustom(profile); confirmDeletePrinter = false }) { Text("Delete") }
+            },
+            dismissButton = { OutlinedButton(onClick = { confirmDeletePrinter = false }) { Text("Cancel") } }
+        )
+    }
     val nozzleChoices = listOf(0.2f, 0.25f, 0.3f, 0.4f, 0.5f, 0.6f, 0.8f, 1.0f)
     LazyColumn(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
@@ -1024,7 +1061,7 @@ private fun PrinterScreen(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onAddCustom) { Icon(Icons.Default.Add, null); Text(" Add custom") }
-                if (!profile.isBuiltIn) OutlinedButton(onClick = { onDeleteCustom(profile) }) {
+                if (!profile.isBuiltIn) OutlinedButton(onClick = { confirmDeletePrinter = true }) {
                     Icon(Icons.Default.Delete, null); Text(" Delete")
                 }
             }
@@ -1150,7 +1187,9 @@ private fun PrinterScreen(
                 modifier = Modifier.fillMaxWidth(), label = { Text("Machine start G-code") }, minLines = 4)
             OutlinedTextField(profile.nozzlePrepGcode, { onProfileChange(profile.copy(nozzlePrepGcode = it)) },
                 modifier = Modifier.fillMaxWidth(), label = { Text("Nozzle purge / wipe G-code (optional)") }, minLines = 3)
-            Text("This runs after the start sequence and G29. Only enter moves for a verified clear area or an installed wipe brush. No physical nozzle brush is assumed.",
+            Text(if (profile.id == "robo3d-r1-plus")
+                "The R1+ preset includes a front-edge purge line (X5–80, Y5). Verify that path is over the usable bed surface and clear of clips before printing; adjust it here if your bed/protector differs. No cleaning brush is assumed."
+                else "This runs after the start sequence. Only enter moves for a verified clear area or an installed wipe brush. No physical nozzle brush is assumed.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(profile.endGcode, { onProfileChange(profile.copy(endGcode = it)) },
                 modifier = Modifier.fillMaxWidth(), label = { Text("Machine end G-code") }, minLines = 4)
