@@ -7,7 +7,10 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.webkit.JavascriptInterface
+import android.webkit.ConsoleMessage
+import android.webkit.WebChromeClient
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -208,7 +211,12 @@ private class DynamicModelPathHandler(
                 "application/octet-stream"
             }
         }
-        val resolvedFile = file?.takeIf { it.isFile } ?: return null
+        val resolvedFile = file?.takeIf { it.isFile }
+        if (resolvedFile == null) {
+            Log.e("SliceViewer", "Asset request missing: /model/$path (configuredFile=$file)")
+            return null
+        }
+        Log.d("SliceViewer", "Serving /model/$path (${resolvedFile.length()} bytes)")
         return runCatching {
             WebResourceResponse(
                 mimeType,
@@ -359,7 +367,31 @@ fun ModelViewer(
                     settings.allowFileAccess = false
                     settings.mediaPlaybackRequiresUserGesture = true
                     addJavascriptInterface(bridge, "AndroidBridge")
+                    webChromeClient = object : WebChromeClient() {
+                        override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                            val line = "${message.message()} -- ${message.sourceId()}:${message.lineNumber()}"
+                            when (message.messageLevel()) {
+                                ConsoleMessage.MessageLevel.ERROR -> Log.e("SliceViewerJS", line)
+                                ConsoleMessage.MessageLevel.WARNING -> Log.w("SliceViewerJS", line)
+                                else -> Log.d("SliceViewerJS", line)
+                            }
+                            return true
+                        }
+                    }
                     webViewClient = object : WebViewClient() {
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            Log.d("SliceViewer", "Viewer page finished: $url")
+                        }
+
+                        override fun onReceivedError(
+                            view: WebView?,
+                            request: WebResourceRequest?,
+                            error: android.webkit.WebResourceError?,
+                        ) {
+                            if (request?.isForMainFrame == true || request?.url?.path?.startsWith("/model/") == true) {
+                                Log.e("SliceViewer", "Web resource failed: ${request?.url} code=${error?.errorCode} description=${error?.description}")
+                            }
+                        }
                         override fun onRenderProcessGone(
                             view: WebView?,
                             detail: RenderProcessGoneDetail?,
@@ -469,10 +501,16 @@ fun ModelViewer(
         } else {
             "null"
         }
+        Log.d(
+            "SliceViewer",
+            "Queue scene load: model=${legacyModelFile?.absolutePath} exists=${legacyModelFile?.isFile} " +
+                "objects=${modelObjects.size} gcode=${gcodeFile?.absolutePath} exists=${gcodeFile?.isFile}",
+        )
         webView?.evaluateJavascript(
             "window.FeresaSlicerViewer.loadScene($payload,$gcodeTimestamp)",
-            null,
-        )
+        ) { result ->
+            Log.d("SliceViewer", "loadScene result: $result")
+        }
     }
 
     LaunchedEffect(viewerReady, transform, modelObjectTransformsKey) {
