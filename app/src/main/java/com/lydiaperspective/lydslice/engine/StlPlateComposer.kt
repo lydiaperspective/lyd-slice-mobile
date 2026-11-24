@@ -188,7 +188,7 @@ object StlPlateComposer {
             }
         }
         val text = file.readText(Charsets.US_ASCII)
-        val vertexPattern = Regex("""(?i)vertex\\s+([-+0-9.eE]+)\\s+([-+0-9.eE]+)\\s+([-+0-9.eE]+)""")
+        val vertexPattern = Regex("""(?i)vertex\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)""")
         val matches = vertexPattern.findAll(text).toList()
         require(matches.isNotEmpty() && matches.size % 3 == 0) { "STL is neither a valid binary nor ASCII mesh." }
         require(matches.size / 3 <= MAX_TRIANGLES) { "STL contains too many triangles." }
