@@ -7,6 +7,9 @@ import org.json.JSONObject
 object PrintProfileStore {
     private const val PREFS = "lyd_slice_profiles"
     private const val KEY_PROFILES = "custom_profiles"
+    private const val KEY_LEGACY_MIGRATED = "custom_profiles_printer_scoped_migrated"
+
+    private fun keyForPrinter(printerProfileId: String) = "${KEY_PROFILES}_$printerProfileId"
 
     fun builtInProfiles(): List<PrintProfile> = listOf(
         PrintProfile("PLA · Balanced", PrintSettings(), isBuiltIn = true),
@@ -28,25 +31,36 @@ object PrintProfileStore {
         ), isBuiltIn = true)
     )
 
-    fun loadCustom(context: Context): List<PrintProfile> {
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_PROFILES, "[]") ?: "[]"
+    fun loadCustom(context: Context, printerProfileId: String): List<PrintProfile> {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val scopedKey = keyForPrinter(printerProfileId)
+        if (!prefs.contains(scopedKey) && !prefs.getBoolean(KEY_LEGACY_MIGRATED, false)) {
+            val legacy = prefs.getString(KEY_PROFILES, "[]") ?: "[]"
+            prefs.edit().putString(scopedKey, legacy)
+                .putBoolean(KEY_LEGACY_MIGRATED, true).apply()
+        }
+        val raw = prefs.getString(scopedKey, "[]") ?: "[]"
         return runCatching {
             val array = JSONArray(raw)
             (0 until array.length()).map { index ->
                 val item = array.getJSONObject(index)
-                PrintProfile(item.getString("name"), item.getJSONObject("settings").toSettings())
+                PrintProfile(
+                    name = item.getString("name"),
+                    settings = item.getJSONObject("settings").toSettings(),
+                    id = item.optString("id").ifBlank { java.util.UUID.randomUUID().toString() }
+                )
             }
         }.getOrDefault(emptyList())
     }
 
-    fun saveCustom(context: Context, profiles: List<PrintProfile>) {
+    fun saveCustom(context: Context, printerProfileId: String, profiles: List<PrintProfile>) {
         val array = JSONArray()
         profiles.filterNot { it.isBuiltIn }.forEach { profile ->
-            array.put(JSONObject().put("name", profile.name).put("settings", profile.settings.toJson()))
+            array.put(JSONObject().put("id", profile.id).put("name", profile.name)
+                .put("settings", profile.settings.toJson()))
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putString(KEY_PROFILES, array.toString()).apply()
+            .putString(keyForPrinter(printerProfileId), array.toString()).apply()
     }
 
     private fun PrintSettings.toJson() = JSONObject()
