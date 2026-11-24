@@ -49,6 +49,9 @@ See [docs/PRINTER-SETTINGS.md](docs/PRINTER-SETTINGS.md) for the Cura-inspired s
 - The current adapter accepts one STL per slice. Multi-model plate composition and transforms are not yet connected to the native request.
 - The native engine currently targets `arm64-v8a` and Android API 28+.
 - G-code output is local and can be exported through Android's Save File picker.
+- Slicing performs preflight checks for supported rectangular beds, positive machine dimensions, nozzle/filament values, temperature ceilings, layer height, and speed/infill ranges.
+- The model is centered on the configured plate, placed on Z=0, and rejected if its bounds exceed the configured build volume.
+- Generated output is checked for actual G-code movement commands before the app marks slicing as successful.
 - The adapter emits warnings when printer start/end G-code is missing and while the R1 Plus profile remains unverified.
 
 The OrcaSlicer-derived integration is distributed under AGPL-3.0. See `LICENSE`, `licenses/feresa/NOTICE.md`, and `licenses/feresa/THIRD_PARTY_NOTICES.md`. The app must preserve the corresponding source and license obligations when redistributed.
