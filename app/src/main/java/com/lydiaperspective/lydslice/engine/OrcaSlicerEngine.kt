@@ -251,7 +251,11 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
         set("sparse_infill_speed", settings.printSpeedMmPerSecond.toString())
         set("initial_layer_speed", settings.initialLayerSpeedMmPerSecond.toString())
         set("initial_layer_infill_speed", settings.initialLayerInfillSpeedMmPerSecond.toString())
-        set("initial_layer_flow_ratio", decimal(settings.firstLayerFlowPercent / 100.0))
+        // Some pinned Orca Mobile engine builds do not expose this option.
+        // Keep the engine's default flow ratio rather than failing the entire slice.
+        if (definitions.containsKey("initial_layer_flow_ratio")) {
+            set("initial_layer_flow_ratio", decimal(settings.firstLayerFlowPercent / 100.0))
+        }
         set("close_fan_the_first_x_layers", settings.firstLayerFanOffLayers.toString())
         set("brim_width", decimal(settings.brimWidthMm.toDouble()))
         set("raft_layers", settings.raftLayers.toString())
