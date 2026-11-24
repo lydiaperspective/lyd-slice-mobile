@@ -533,7 +533,8 @@ private fun WorkspaceScreen(
                     ),
                     bedWidth = printer.bedWidthMm.toDouble(),
                     bedDepth = printer.bedDepthMm.toDouble(),
-                    mode = if (gcodePreviewFile != null) ViewerMode.TOOLPATH else ViewerMode.MODEL,
+                    // Keep the STL visible while G-code is loading. The viewer switches to toolpath mode only after parsing succeeds.
+                    mode = ViewerMode.MODEL,
                     toolpathProgress = previewProgress,
                     darkTheme = true,
                     onSceneState = {},
