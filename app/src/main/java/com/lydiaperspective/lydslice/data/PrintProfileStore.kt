@@ -63,6 +63,11 @@ object PrintProfileStore {
             .putString(keyForPrinter(printerProfileId), array.toString()).apply()
     }
 
+    fun deleteForPrinter(context: Context, printerProfileId: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove(keyForPrinter(printerProfileId)).apply()
+    }
+
     private fun PrintSettings.toJson() = JSONObject()
         .put("material", material).put("qualityBalance", qualityBalance.toDouble())
         .put("layerHeightMm", layerHeightMm.toDouble()).put("infillPercent", infillPercent)
