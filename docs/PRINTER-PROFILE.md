@@ -2,17 +2,17 @@
 
 ## Hardware facts and confidence
 
-The R1+ is a single-extruder printer with a heated bed. Robo's support guidance gives PLA temperatures of 190–210°C at the nozzle and 50–70°C at the bed, and ABS temperatures of 230–250°C at the nozzle and 80–100°C at the bed. Published R1+ hardware specifications describe a 0.4 mm nozzle, 1.75 mm filament and a hot-end ceiling of 290°C; the 290°C value is a hardware limit, not a recommended print temperature.
+The owner-provided ctkjose/R1PLUSFIRMWARE repository is the primary reference for this printer's installed firmware. Its `FIRMWARE/config.h` sets X travel to 0–240 mm, Y travel to 0–254 mm and Z travel to 0–240 mm; it configures a 3 × 3 automatic bed-levelling grid with probe coordinates X 15–205 mm and Y 20–230 mm. The repository's `CFG_ROBOR1PLUS.md` sets `CFG_Z_PROBE_OFFSET_FROM_EXTRUDER` to 1 mm. Its `config_temp.h` sets the hot-end maximum to 290°C and bed maximum to 110°C, with one active hot-end thermistor and a heated-bed thermistor. The repository describes the board target as RAMPS 1.4/1.6 with an ATmega2560.
 
-Marlin's published R1+ machine entry identifies a Cartesian machine with one extruder, a RAMPS 1.4 EFB board and a nominal build volume of 240 × 254 × 240 mm. The app now uses those dimensions rather than the earlier provisional 220 × 220 × 250 mm values. This is a firmware reference, not proof that every used machine has the same unobstructed travel: clips, bed changes, endstop positions, replacement firmware and other modifications can reduce or alter usable space.
+The firmware's X/Y travel limits are not proof of the usable printable surface. Its README mentions common 220 × 220 mm bed films/tapes, but does not define the physical protector's exact dimensions or its position relative to the home origin. The app therefore still needs the protector's measured printable footprint before treating the full 240 × 254 mm travel as printable bed area. The reported ~1 mm protector thickness is not itself a reason to subtract 1 mm from Z height; the firmware's Z-probe offset is the relevant first-layer calibration setting.
 
-Robo's MatterControl support guidance explicitly says R1 and R1+ use firmware bed leveling and instructs users to place G29 after the other start-G-code lines. The preset therefore homes with G28 and runs G29. Robo's Z-offset article says the R1+ offset is adjusted through its controls/macros and distinguishes it from the older R1; the app deliberately does not inject an M565 offset.
+This firmware is a Marlin-derived rewrite. Its README says its G-code behavior is closer to RepRapFirmware/LinuxCNC in some respects, and its Cura guidance uses `RepRap (Marlin/Sprinter)`. The app preset therefore selects OrcaSlicer's `RepRap` flavor rather than generic `Marlin`. The firmware source explicitly implements `G28`, `G29`, `M565`, `M82`, `M83`, `M104`, `M109`, `M140`, `M190`, `M106`, `M107` and `M84`.
 
 ## Built-in starting profiles
 
-The built-in R1+ machine profile now starts with G21, G90, M83, temperature set/wait commands using OrcaSlicer's initial-layer placeholders, G28, G29, and G92 E0. Its end script turns off the hot end, heated bed and part fan, then disables the motors. The slicer is explicitly configured for relative E distances to match M83.
+The built-in R1+ profile now uses RepRap flavor, relative extrusion, the firmware's 1 mm Z-probe offset (emitted as `M565 Z-1.0` before `G28`), then `G28` and `G29`. The offset is an editable profile field; it is emitted before homing because this firmware applies `state.zoffset` during `G28`. Start/end G-code fields remain editable. The end script disables the hot end, bed and fan, then disables the motors.
 
-These scripts are a conservative baseline based on Robo's documented firmware-level leveling workflow and OrcaSlicer's Marlin/relative-extrusion conventions. The exact firmware revision and any owner modifications on an individual printer are not known; inspect the exported G-code and verify the printer's firmware behavior before printing.
+The 290°C hot-end and 110°C bed values are firmware safety ceilings, not recommended material setpoints. The app's material profiles remain within Robo's published PLA/ABS guidance. The firmware repository does not establish the protector's actual usable XY footprint.
 
 These are cautious starting presets for experimentation, not official factory profiles and not guaranteed recipes. The nozzle and bed temperature bands come from Robo's R1+ temperature guidance. Speeds and quality combinations are conservative app defaults informed by the manual's 0.2 mm default and the documented trade-off between layer height, print time and detail.
 
@@ -34,7 +34,7 @@ Robo's troubleshooting guidance recommends lowering the fan to around 30% if par
 
 A long-term R1+ owner-maintainer's project notes that their machine had been modified over several years. They report that dual part-cooling fans improved PLA appearance and that careful X-axis gantry balance/mesh leveling had a noticeable effect on first-layer quality. The same owner reports personally preferring MatterSlicer results to Cura on their setup. This is useful context, but it is one modified machine and does not establish a universal speed/temperature recipe.
 
-Robo's own support material also contains differing Z-offset guidance across pages: one operation guide describes a typical R1+ offset around 0.9 mm, while a separate Z-endstop support article says to leave the R1 Plus at 0 mm in a particular Cura/start-G-code workflow. Because the instructions are context-dependent and potentially firmware/slicer-specific, the app must not hard-code a Z-offset or start G-code. The actual printer's firmware, slicer profile and first-layer calibration need to be checked.
+For this installed firmware, the profile default is 1.0 mm because `CFG_ROBOR1PLUS.md` explicitly specifies that value. This is distinct from Robo support pages describing offsets for other firmware/control workflows. The offset remains editable and must be calibrated against the actual bed/protector and first layer; do not assume that the protector thickness should simply be added to or subtracted from the firmware offset.
 
 ## In-app warning rules
 
@@ -46,7 +46,7 @@ These are advisory warnings. Filament manufacturers' instructions and the condit
 
 Confirm from the specific printer/firmware configuration:
 
-- Actual usable X/Y/Z travel and origin convention (the app's 240 × 254 × 240 mm values come from Marlin's R1+ reference configuration)
+- Actual usable printable XY footprint and its position relative to the home origin (the firmware axis travel is X 240, Y 254, Z 240 mm; its probe grid is X 15–205 and Y 20–230 mm)
 - Nozzle diameter and filament diameter
 - Heated-bed availability and temperature limits
 - Hotend temperature limits
@@ -59,6 +59,7 @@ Do not assume all R1 Plus machines have identical firmware or modifications. Kee
 
 ## Sources
 
+- ctkjose, [R1PLUSFIRMWARE](https://github.com/ctkjose/R1PLUSFIRMWARE) — installed firmware source and R1+ configuration
 - Marlin Firmware, [Robo3D R1+ machine reference](https://marlinfw.org/docs/appendix/printers/robo3d.html)
 - MatterHackers, [Using firmware leveling with Robo R1/R1+](https://help.matterhackers.com/article/62-i-updated-mattercontrol-and-now-i-cant-see-software-print-leveling-in-the-options-menu)
 - Robo Help Center, [Adjusting temperatures](https://help.robo3d.com/hc/en-us/articles/115001254531-Adjusting-temperatures)
