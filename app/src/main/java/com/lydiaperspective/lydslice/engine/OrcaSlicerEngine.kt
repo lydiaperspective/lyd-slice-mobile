@@ -267,14 +267,26 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
         // Resetting E here keeps the cumulative extrusion coordinate bounded.
         set("before_layer_change_gcode", ";BEFORE_LAYER_CHANGE\nG92 E0\n;[layer_z]")
         when (settings.buildPlateAdhesion.lowercase(Locale.ROOT)) {
-            "brim" -> set("brim_type", "outer_only")
-            "raft" -> set("raft_layers", settings.raftLayers.coerceAtLeast(1).toString())
+            "brim" -> {
+                set("brim_type", "outer_only")
+                set("skirt_loops", "0")
+                set("raft_layers", "0")
+            }
+            "raft" -> {
+                set("brim_width", "0")
+                set("skirt_loops", "0")
+                set("raft_layers", settings.raftLayers.coerceAtLeast(1).toString())
+            }
             "none" -> {
                 set("brim_width", "0")
                 set("skirt_loops", "0")
                 set("raft_layers", "0")
             }
-            else -> set("skirt_loops", settings.skirtLoops.toString())
+            else -> {
+                set("brim_width", "0")
+                set("raft_layers", "0")
+                set("skirt_loops", settings.skirtLoops.toString())
+            }
         }
         if (printer.startGcode.isNotBlank()) {
             // ctkjose/R1PLUSFIRMWARE defines a 1 mm probe offset by default and
