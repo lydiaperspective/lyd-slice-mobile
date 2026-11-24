@@ -7,8 +7,11 @@ The Printer tab uses a machine-profile model inspired by UltiMaker Cura's machin
 - Built-in profiles are immutable templates.
 - Selecting a built-in profile fills the active machine configuration.
 - Editing any value on a built-in profile creates a separate custom copy. The built-in remains unchanged.
-- Custom profiles are saved locally on the Android device and the selected profile is restored on the next launch.
-- Users can create, rename, edit, select and delete custom printer profiles.
+- Custom printer profiles are saved locally on the Android device and the selected printer is restored on the next launch.
+- Custom print profiles are scoped to the selected printer profile ID. Switching printers shows a separate set of saved print profiles.
+- Built-in print presets remain shared read-only starting points; user-created print profiles belong to one printer.
+- Users can copy a custom print profile to another printer. Copying creates an independent profile and leaves the original unchanged.
+- Existing custom print profiles from the older app version are migrated to the printer selected the first time the new version loads them.
 
 ## Included presets
 
@@ -58,6 +61,14 @@ The print-settings screen exposes OrcaSlicer-backed adhesion choices: none, skir
 For the R1 Plus, the built-in start script retains G28 followed by G29. This performs firmware homing and automatic bed levelling before the optional nozzle-preparation script and print. G29 is not a substitute for a clean bed, correct probe offset, or a clean nozzle. The app does not assume a physical nozzle brush or a safe purge-line location. Only configure purge/wipe moves after verifying the actual coordinates and clearance on the individual printer. Inspect the exported G-code before printing, especially after changing start scripts.
 
 First-layer flow is a fine-tuning control, not a fix for incorrect Z-probe offset, dirty build surface, or damaged/uneven bed covering. Start near 100% and adjust in small steps based on a test print. Follow the filament manufacturer's temperature guidance; a brim or raft cannot compensate for poor surface preparation.
+
+## Model placement and automatic orientation
+
+The Workspace model editor supports manual X/Y/Z placement and rotation around all three axes. X and Y identify the model centre in printer coordinates; Z is a lift above the bed. The combined plate mesh is rebuilt after applying a transform, and the composer checks the resulting geometry against the configured build volume.
+
+Auto arrange tests six axis-aligned bed-facing orientations, scores their flat bed-contact area, then uses lower model height and footprint as tie-breakers. It sorts larger oriented footprints first and uses 0°/90° in-plane packing with 3 mm spacing. This can find useful upside-down or side-on placements when a model has a broad flat face.
+
+This is a geometric orientation heuristic, not a full print-quality optimizer. It does not yet estimate support volume, overhang risk, cooling, seam placement, travel distance, or slice time for every candidate orientation. A true speed/quality optimizer needs to slice candidate poses and compare OrcaSlicer estimates; inspect the preview before printing.
 
 ## Cura reference
 
