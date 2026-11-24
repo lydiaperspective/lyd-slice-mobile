@@ -31,7 +31,7 @@ object PrinterProfileStore {
                 ; Robo 3D R1+ start sequence
                 G21 ; Use millimeters
                 G90 ; Absolute XYZ positioning
-                M82 ; Absolute extrusion
+                M83 ; Relative extrusion
                 M140 S[bed_temperature_initial_layer_single]
                 M104 S[nozzle_temperature_initial_layer]
                 M190 S[bed_temperature_initial_layer_single]
