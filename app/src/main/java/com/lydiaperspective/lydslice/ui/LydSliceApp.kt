@@ -863,8 +863,10 @@ private fun PrinterScreen(
             ProfileSwitch("Heated build volume / chamber", profile.heatedBuildVolume) { onProfileChange(profile.copy(heatedBuildVolume = it)) }
             if (!profile.heatedBed) Text("This printer has no heated bed. Bed temperature must not be used by generated machine code.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            if (profile.id == "robo3d-r1-plus") Text("R1 Plus build volume is a provisional 220 × 220 × 250 mm. Verify actual usable travel before slicing.",
-                color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            if (profile.name.startsWith("Robo 3D R1 Plus", ignoreCase = true)) Text(
+                "Published Marlin R1+ nominal build volume: 240 × 254 × 240 mm. Verify unobstructed usable travel on your physical printer before using the full limits.",
+                color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall
+            )
         }
         item {
             Text("Extruders and nozzle", style = MaterialTheme.typography.titleLarge)
@@ -932,7 +934,7 @@ private fun PrinterScreen(
         }
         item {
             Text("Start and end G-code", style = MaterialTheme.typography.titleLarge)
-            Text("Saved with this profile. Not yet used to generate G-code; machine scripts must be validated against firmware before use.",
+            Text("These scripts are inserted into exported G-code. The R1+ preset includes G29 for firmware bed leveling; change it only if your printer's firmware or leveling setup differs.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(profile.startGcode, { onProfileChange(profile.copy(startGcode = it)) },
                 modifier = Modifier.fillMaxWidth(), label = { Text("Machine start G-code") }, minLines = 4)
