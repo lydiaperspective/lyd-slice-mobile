@@ -219,6 +219,8 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
         set("printable_area", "${decimal(x0)}x${decimal(y0)},${decimal(x1)}x${decimal(y0)},${decimal(x1)}x${decimal(y1)},${decimal(x0)}x${decimal(y1)}")
         set("printable_height", decimal(printer.buildHeightMm.toDouble()))
         set("gcode_flavor", printer.gcodeFlavor.lowercase(Locale.ROOT).replace(" ", ""))
+        // Keep the slicer's extrusion mode explicit so it matches the R1+ M83 start code.
+        set("use_relative_e_distances", "1")
         set("nozzle_diameter", decimal(printer.activeNozzleDiameterMm.toDouble()))
         set("filament_diameter", decimal(printer.filamentDiameterMm.toDouble()))
         set("nozzle_temperature", settings.nozzleTemperatureC.toString())
