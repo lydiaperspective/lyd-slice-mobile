@@ -43,6 +43,15 @@ object PrinterProfileStore {
                 G29 ; Run R1+ firmware bed leveling
                 G92 E0 ; Reset extrusion distance
             """.trimIndent(),
+            nozzlePrepGcode = """
+                ; Prime the nozzle along the front edge of the bed (verify this path is clear)
+                G1 Z5 F3000
+                G1 X5 Y5 F5000
+                G1 Z0.3 F300
+                G1 X80 E3 F600
+                G1 E-1 F1800
+                G1 Z5 F3000
+            """.trimIndent(),
             endGcode = """
                 ; Robo 3D R1+ end sequence
                 M104 S0 ; Turn off hotend
