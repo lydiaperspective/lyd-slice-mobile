@@ -847,6 +847,11 @@ private fun PrinterScreen(
             PrinterNumberField("X width (mm)", profile.bedWidthMm) { onProfileChange(profile.copy(bedWidthMm = it.coerceAtLeast(1f))) }
             PrinterNumberField("Y depth (mm)", profile.bedDepthMm) { onProfileChange(profile.copy(bedDepthMm = it.coerceAtLeast(1f))) }
             PrinterNumberField("Z height (mm)", profile.buildHeightMm) { onProfileChange(profile.copy(buildHeightMm = it.coerceAtLeast(1f))) }
+            if (profile.id == "robo3d-r1-plus") Text(
+                "Firmware axis travel is X 240 × Y 254 × Z 240 mm. The XY values here are only a provisional print-area envelope: measure the protected bed's usable surface and set X/Y to that area before printing near the edges.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
             Box {
                 OutlinedButton(onClick = { shapeMenu = true }) { Text("Build plate shape: " + profile.buildPlateShape) }
                 androidx.compose.material3.DropdownMenu(shapeMenu, { shapeMenu = false }) {
