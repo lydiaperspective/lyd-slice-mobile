@@ -112,7 +112,7 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
                     if (request.printer.endGcode.isBlank()) {
                         add("Printer end G-code is not configured. Review the exported file before printing.")
                     }
-                    add("Robo R1+ dimensions are based on Marlin reference values; confirm usable travel and firmware behavior on your physical printer before printing.")
+                    add("R1+ firmware axis limits are 240 × 254 × 240 mm. Confirm the actual protected printable bed area and first-layer Z offset before printing near the limits.")
                 }
                 Handler(Looper.getMainLooper()).post { onProgress(1f) }
                 SliceResult(
@@ -250,7 +250,19 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
             "none" -> set("skirt_loops", "0")
             else -> set("skirt_loops", "2")
         }
-        if (printer.startGcode.isNotBlank()) set("machine_start_gcode", printer.startGcode)
+        if (printer.startGcode.isNotBlank()) {
+            // ctkjose/R1PLUSFIRMWARE defines a 1 mm probe offset by default and
+            // implements M565. Emit the configured offset before G28, which applies it.
+            val startGcode = buildString {
+                if (printer.zProbeOffsetMm > 0f) {
+                    append("M565 Z-")
+                    append(decimal(printer.zProbeOffsetMm.toDouble()))
+                    append("\\n")
+                }
+                append(printer.startGcode)
+            }
+            set("machine_start_gcode", startGcode)
+        }
         if (printer.endGcode.isNotBlank()) set("machine_end_gcode", printer.endGcode)
 
         destination.parentFile?.mkdirs()
