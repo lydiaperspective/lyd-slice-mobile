@@ -114,7 +114,9 @@ object PrinterProfileStore {
         .put("gantryHeightMm", gantryHeightMm.toDouble())
         .put("maxNozzleTemperatureC", maxNozzleTemperatureC)
         .put("maxBedTemperatureC", maxBedTemperatureC)
+        .put("zProbeOffsetMm", zProbeOffsetMm.toDouble())
         .put("startGcode", startGcode)
+        .put("nozzlePrepGcode", nozzlePrepGcode)
         .put("endGcode", endGcode)
 
     private fun JSONObject.toPrinterProfile(): PrinterProfile {
@@ -145,6 +147,7 @@ object PrinterProfileStore {
             maxBedTemperatureC = optInt("maxBedTemperatureC", 100),
             zProbeOffsetMm = optDouble("zProbeOffsetMm", 0.0).toFloat(),
             startGcode = optString("startGcode", ""),
+            nozzlePrepGcode = optString("nozzlePrepGcode", ""),
             endGcode = optString("endGcode", "")
         )
     }
