@@ -56,6 +56,11 @@ object PrintProfileStore {
         .put("topBottomLayers", topBottomLayers).put("nozzleTemperatureC", nozzleTemperatureC)
         .put("bedTemperatureC", bedTemperatureC).put("coolingFanPercent", coolingFanPercent)
         .put("initialLayerSpeedMmPerSecond", initialLayerSpeedMmPerSecond)
+        .put("initialLayerInfillSpeedMmPerSecond", initialLayerInfillSpeedMmPerSecond)
+        .put("firstLayerFlowPercent", firstLayerFlowPercent)
+        .put("firstLayerFanOffLayers", firstLayerFanOffLayers)
+        .put("brimWidthMm", brimWidthMm.toDouble()).put("raftLayers", raftLayers)
+        .put("skirtLoops", skirtLoops)
         .put("supportEnabled", supportEnabled).put("buildPlateAdhesion", buildPlateAdhesion)
 
     private fun JSONObject.toSettings() = PrintSettings(
@@ -70,7 +75,13 @@ object PrintProfileStore {
         bedTemperatureC = optInt("bedTemperatureC", 60),
         coolingFanPercent = optInt("coolingFanPercent", 100),
         initialLayerSpeedMmPerSecond = optInt("initialLayerSpeedMmPerSecond", 20),
+        initialLayerInfillSpeedMmPerSecond = optInt("initialLayerInfillSpeedMmPerSecond", 20),
+        firstLayerFlowPercent = optInt("firstLayerFlowPercent", 100),
+        firstLayerFanOffLayers = optInt("firstLayerFanOffLayers", 1),
+        brimWidthMm = optDouble("brimWidthMm", 5.0).toFloat(),
+        raftLayers = optInt("raftLayers", 0),
+        skirtLoops = optInt("skirtLoops", 2),
         supportEnabled = optBoolean("supportEnabled", false),
-        buildPlateAdhesion = optString("buildPlateAdhesion", "Skirt")
+        buildPlateAdhesion = optString("buildPlateAdhesion", "Brim")
     )
 }
