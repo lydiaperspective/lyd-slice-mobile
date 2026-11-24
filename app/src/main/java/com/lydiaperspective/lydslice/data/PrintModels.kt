@@ -36,6 +36,8 @@ data class PrintSettings(
     val raftLayers: Int = 0,
     val skirtLoops: Int = 2,
     val supportEnabled: Boolean = false,
+    /** OrcaSlicer support_type: normal, tree(auto), or tree(manual). */
+    val supportType: String = "tree(auto)",
     val buildPlateAdhesion: String = "Brim"
 )
 
