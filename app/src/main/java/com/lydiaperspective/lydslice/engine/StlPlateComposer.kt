@@ -44,9 +44,13 @@ object StlPlateComposer {
         var cursorX = SPACING_MM
         var cursorY = SPACING_MM
         var rowDepth = 0.0
-        for (index in models.indices) {
+        val orientedModels = models.indices.map { index ->
+            index to chooseOrientation(meshes[index])
+        }.sortedByDescending { (_, orientation) ->
+            orientation.bounds.width * orientation.bounds.depth
+        }
+        for ((index, orientation) in orientedModels) {
             val mesh = meshes[index]
-            val orientation = chooseOrientation(mesh)
             val oriented = orientation.bounds
             val orientations = listOf(
                 Triple(0f, oriented.width, oriented.depth),
