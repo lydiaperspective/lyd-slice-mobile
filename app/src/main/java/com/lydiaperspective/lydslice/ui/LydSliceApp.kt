@@ -578,6 +578,8 @@ private fun WorkspaceScreen(
                 else Text("Slice")
             }
         }
+        Text("Auto arrange tests six upright/sideways/upside-down orientations, preferring a broad flat bed-contact face and then a lower model height. It is a geometry heuristic; it does not yet simulate support needs or compare actual slice times.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text("Models", style = MaterialTheme.typography.titleMedium)
         if (models.isEmpty()) {
             Text("Import one or more STL files to begin.", color = MaterialTheme.colorScheme.onSurfaceVariant)
