@@ -9,6 +9,8 @@ data class ModelPlacement(
     val xMm: Float = 0f,
     val yMm: Float = 0f,
     val zMm: Float = 0f,
+    val rotationXDegrees: Float = 0f,
+    val rotationYDegrees: Float = 0f,
     val rotationZDegrees: Float = 0f,
     val sizeXmm: Float = 20f,
     val sizeYmm: Float = 20f,
@@ -40,7 +42,8 @@ data class PrintSettings(
 data class PrintProfile(
     val name: String,
     val settings: PrintSettings,
-    val isBuiltIn: Boolean = false
+    val isBuiltIn: Boolean = false,
+    val id: String = UUID.randomUUID().toString()
 )
 
 /**
