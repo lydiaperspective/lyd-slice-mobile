@@ -39,8 +39,8 @@ data class PrintProfile(
 
 /**
  * Machine-level configuration inspired by Cura's Printer / Extruder settings.
- * The built-in R1+ dimensions follow Marlin's published machine reference and still
- * require confirmation against the usable travel of the individual physical printer.
+ * The built-in R1+ axis limits follow the installed ctkjose firmware config.
+ * The actual printable bed/protector footprint must be measured separately.
  */
 data class PrinterProfile(
     val id: String = UUID.randomUUID().toString(),
