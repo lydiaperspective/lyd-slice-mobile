@@ -56,13 +56,13 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
             val modelWidth = bounds[3] - bounds[0]
             val modelDepth = bounds[4] - bounds[1]
             val modelHeight = bounds[5] - bounds[2]
-            require(modelWidth <= request.printer.bedWidthMm + 0.01) {
+            require(modelWidth <= request.printer.bedWidthMm.toDouble() + 0.01) {
                 "Model width is ${decimal(modelWidth)} mm, larger than the ${request.printer.bedWidthMm} mm build plate."
             }
-            require(modelDepth <= request.printer.bedDepthMm + 0.01) {
+            require(modelDepth <= request.printer.bedDepthMm.toDouble() + 0.01) {
                 "Model depth is ${decimal(modelDepth)} mm, larger than the ${request.printer.bedDepthMm} mm build plate."
             }
-            require(modelHeight <= request.printer.buildHeightMm + 0.01) {
+            require(modelHeight <= request.printer.buildHeightMm.toDouble() + 0.01) {
                 "Model height is ${decimal(modelHeight)} mm, larger than the ${request.printer.buildHeightMm} mm build height."
             }
             val centerX = (bounds[0] + bounds[3]) / 2.0
@@ -78,8 +78,8 @@ class OrcaSlicerEngine(private val context: Context) : SlicingEngine {
                 placedBounds[0] >= plateMinX - 0.01 &&
                     placedBounds[1] >= plateMinY - 0.01 &&
                     placedBounds[2] >= -0.01 &&
-                    placedBounds[3] <= plateMinX + request.printer.bedWidthMm + 0.01 &&
-                    placedBounds[4] <= plateMinY + request.printer.bedDepthMm + 0.01 &&
+                    placedBounds[3] <= plateMinX + request.printer.bedWidthMm.toDouble() + 0.01 &&
+                    placedBounds[4] <= plateMinY + request.printer.bedDepthMm.toDouble() + 0.01 &&
                     placedBounds[5] <= request.printer.buildHeightMm + 0.01
             ) {
                 "The model could not be positioned fully inside the configured build volume."
