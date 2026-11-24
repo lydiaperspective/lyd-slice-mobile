@@ -15,16 +15,16 @@ The Printer tab uses a machine-profile model inspired by UltiMaker Cura's machin
 ### Robo 3D R1 Plus
 
 The initial R1 Plus preset is a starting point:
-- 220 × 220 × 250 mm build volume (provisional; verify the actual usable travel)
+- Firmware axis travel of X 240 × Y 254 × Z 240 mm; this is not confirmation of the protected bed's usable printable footprint
 - Rectangular build plate
 - Heated bed
 - Single extruder
 - 0.4 mm nozzle
 - 1.75 mm filament
 - Marlin G-code flavor (confirm against the firmware installed on the actual printer)
-- 290°C hotend and 100°C bed limits are configuration ceilings, not recommended print temperatures
+- 290°C hotend and 110°C bed limits are firmware configuration ceilings, not recommended print temperatures
 
-The build volume and firmware configuration must be verified on the specific printer before production G-code is generated. R1 Plus machines may have been modified.
+The firmware axis limits come from the installed R1+ firmware configuration. Measure the protected bed's actual usable surface and verify unobstructed travel on the specific printer before printing near the edges. R1 Plus machines may have been modified.
 
 ### Generic FFF Printer
 
@@ -70,6 +70,6 @@ The configuration categories are based on Cura's documented custom-printer setup
 
 ## Current implementation boundary
 
-These settings are stored and displayed by the app, and some of them constrain the print-settings UI. The STL slicing engine does not yet consume this machine profile. In particular, build plate geometry, head clearances, extruder count, G-code flavor, start/end scripts, and firmware limits must be connected to and validated by the slicing engine before the app can generate safe, machine-specific G-code.
+The OrcaSlicer adapter consumes the configured rectangular build area, origin mode, build height, nozzle and filament diameters, temperature ceilings, G-code flavor, start/end scripts, and R1+ Z-probe offset. Head clearances and multi-extruder machine behavior are currently profile metadata and are not fully implemented in slicing. Circular/custom build plates are rejected. Firmware axis limits do not establish the protected printable footprint.
 
 Do not send generated G-code to a printer until the profile has been verified against the actual printer and firmware.
