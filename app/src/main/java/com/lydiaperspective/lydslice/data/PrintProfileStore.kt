@@ -80,7 +80,8 @@ object PrintProfileStore {
         .put("firstLayerFanOffLayers", firstLayerFanOffLayers)
         .put("brimWidthMm", brimWidthMm.toDouble()).put("raftLayers", raftLayers)
         .put("skirtLoops", skirtLoops)
-        .put("supportEnabled", supportEnabled).put("buildPlateAdhesion", buildPlateAdhesion)
+        .put("supportEnabled", supportEnabled).put("supportType", supportType)
+        .put("buildPlateAdhesion", buildPlateAdhesion)
 
     private fun JSONObject.toSettings() = PrintSettings(
         material = optString("material", "PLA"),
@@ -101,6 +102,7 @@ object PrintProfileStore {
         raftLayers = optInt("raftLayers", 0),
         skirtLoops = optInt("skirtLoops", 2),
         supportEnabled = optBoolean("supportEnabled", false),
+        supportType = optString("supportType", "tree(auto)"),
         buildPlateAdhesion = optString("buildPlateAdhesion", "Brim")
     )
 }
